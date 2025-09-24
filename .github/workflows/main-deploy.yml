@@ -7,7 +7,7 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: rg-marketplace-dev
-  AZURE_LOCATION: southeastasia
+  AZURE_LOCATION: eastasia
 
 jobs:
   build-and-deploy-backend:
@@ -62,6 +62,21 @@ jobs:
             "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
             "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
           }
+          
+    - name: Clean up existing resource group (if exists)
+      run: |
+        if az group show --name ${{ env.AZURE_RESOURCE_GROUP }} >/dev/null 2>&1; then
+          echo "Resource group exists, deleting..."
+          az group delete --name ${{ env.AZURE_RESOURCE_GROUP }} --yes --no-wait
+          echo "Waiting for deletion to complete..."
+          while az group show --name ${{ env.AZURE_RESOURCE_GROUP }} >/dev/null 2>&1; do
+            echo "Still deleting..."
+            sleep 30
+          done
+          echo "Resource group deleted successfully"
+        else
+          echo "Resource group does not exist, proceeding..."
+        fi
           
     - name: Terraform Init
       run: |
