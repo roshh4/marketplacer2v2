@@ -7,7 +7,7 @@ variable "environment" {
 variable "location" {
   description = "Azure region for resources"
   type        = string
-  default     = "East US"
+  default     = "Southeast Asia"
 }
 
 variable "db_admin_username" {
