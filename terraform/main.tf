@@ -73,7 +73,7 @@ resource "azurerm_container_app" "marketplace_backend" {
   template {
     container {
       name   = "marketplace-backend"
-      image  = "alphastar59/marketplace-backend-alpine-amd64:${var.container_image_tag}"
+      image  = "roshh4/marketplace-backend-alpine-amd64:${var.container_image_tag}"
       cpu    = 0.25
       memory = "0.5Gi"
 

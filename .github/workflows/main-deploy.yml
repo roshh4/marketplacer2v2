@@ -42,8 +42,8 @@ jobs:
         file: ./backend/Dockerfile
         push: true
         tags: |
-          alphastar59/marketplace-backend-alpine-amd64:latest
-          alphastar59/marketplace-backend-alpine-amd64:${{ steps.version.outputs.version }}
+          roshh4/marketplace-backend-alpine-amd64:latest
+          roshh4/marketplace-backend-alpine-amd64:${{ steps.version.outputs.version }}
         platforms: linux/amd64
         
     - name: Setup Terraform

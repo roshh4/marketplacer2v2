@@ -7,13 +7,13 @@ Go to your GitHub repo → Settings → Secrets and variables → Actions
 
 Add these secrets:
 ```
-DOCKERHUB_USERNAME = alphastar59
+DOCKERHUB_USERNAME = roshh4
 DOCKERHUB_TOKEN = <your-docker-hub-access-token>
 AZURE_CLIENT_ID = <your-azure-client-id>
 AZURE_CLIENT_SECRET = <your-azure-client-secret>
 AZURE_TENANT_ID = <your-azure-tenant-id>
 AZURE_SUBSCRIPTION_ID = (run: az account show --query id -o tsv)
-DB_PASSWORD = <your-secure-database-password>
+DB_PASSWORD = YourChosenPassword123!
 ```
 
 ### 2. Create Static Web App (One-time setup)

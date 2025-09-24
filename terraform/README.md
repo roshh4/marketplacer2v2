@@ -20,7 +20,7 @@ Complete CI/CD deployment for marketplace application with frontend and backend.
    Add these secrets to your GitHub repository (Settings → Secrets and variables → Actions):
    
    **Docker Hub:**
-   - `DOCKERHUB_USERNAME`: alphastar59
+   - `DOCKERHUB_USERNAME`: roshh4
    - `DOCKERHUB_TOKEN`: Your Docker Hub access token
    
    **Azure:**
@@ -30,7 +30,7 @@ Complete CI/CD deployment for marketplace application with frontend and backend.
    - `AZURE_TENANT_ID`: Your Azure tenant ID
    
    **Database:**
-   - `DB_PASSWORD`: Marketplace_Azure_1234*
+   - `DB_PASSWORD`: YourChosenPassword123!
    
    **Static Web Apps:**
    - `AZURE_STATIC_WEB_APPS_API_TOKEN`: (Generated when creating Static Web App)
