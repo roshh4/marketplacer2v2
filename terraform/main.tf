@@ -66,7 +66,7 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
 # Container App (using existing one)
 resource "azurerm_container_app" "marketplace_backend" {
   name                         = "marketplace-backend"
-  container_app_environment_id = data.azurerm_container_app_environment.marketplace.id
+  container_app_environment_id = azurerm_container_app_environment.marketplace.id
   resource_group_name          = "MarketPlaceCloud"
   revision_mode                = "Single"
 
