@@ -17,11 +17,10 @@ resource "azurerm_resource_group" "marketplace" {
   location = var.location
 }
 
-# Container Apps Environment
-resource "azurerm_container_app_environment" "marketplace" {
-  name                = "cae-marketplace-${var.environment}"
-  location            = azurerm_resource_group.marketplace.location
-  resource_group_name = azurerm_resource_group.marketplace.name
+# Use existing Container Apps Environment
+data "azurerm_container_app_environment" "marketplace" {
+  name                = "marketplace-env"
+  resource_group_name = "MarketPlaceCloud"
 }
 
 # PostgreSQL Flexible Server
@@ -63,11 +62,11 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
   end_ip_address   = "0.0.0.0"
 }
 
-# Container App
+# Container App (using existing one)
 resource "azurerm_container_app" "marketplace_backend" {
-  name                         = "ca-marketplace-backend-${var.environment}"
-  container_app_environment_id = azurerm_container_app_environment.marketplace.id
-  resource_group_name          = azurerm_resource_group.marketplace.name
+  name                         = "marketplace-backend"
+  container_app_environment_id = data.azurerm_container_app_environment.marketplace.id
+  resource_group_name          = "MarketPlaceCloud"
   revision_mode                = "Single"
 
   template {

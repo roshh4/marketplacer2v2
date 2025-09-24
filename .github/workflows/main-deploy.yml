@@ -7,7 +7,7 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: rg-marketplace-dev
-  AZURE_LOCATION: eastasia
+  AZURE_LOCATION: southeastasia
 
 jobs:
   build-and-deploy-backend:
@@ -63,8 +63,12 @@ jobs:
             "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
           }
           
-    - name: Clean up existing resource group (if exists)
+    - name: Check existing Container App Environments
       run: |
+        echo "Listing existing Container App Environments:"
+        az containerapp env list --output table
+        
+        # Check if we need to clean up existing resource group
         if az group show --name ${{ env.AZURE_RESOURCE_GROUP }} >/dev/null 2>&1; then
           echo "Resource group exists, deleting..."
           az group delete --name ${{ env.AZURE_RESOURCE_GROUP }} --yes --no-wait
