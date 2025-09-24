@@ -17,10 +17,11 @@ resource "azurerm_resource_group" "marketplace" {
   location = var.location
 }
 
-# Use existing Container Apps Environment
-data "azurerm_container_app_environment" "marketplace" {
-  name                = "marketplace-env"
-  resource_group_name = "MarketPlaceCloud"
+# Container Apps Environment
+resource "azurerm_container_app_environment" "marketplace" {
+  name                = "cae-marketplace-${var.environment}"
+  location            = azurerm_resource_group.marketplace.location
+  resource_group_name = azurerm_resource_group.marketplace.name
 }
 
 # PostgreSQL Flexible Server

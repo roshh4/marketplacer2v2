@@ -63,24 +63,13 @@ jobs:
             "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
           }
           
-    - name: Check existing Container App Environments
+    - name: Verify clean environment
       run: |
-        echo "Listing existing Container App Environments:"
-        az containerapp env list --output table
+        echo "Current Azure account:"
+        az account show --query "{subscriptionId:id, name:name, user:user.name}" --output table
         
-        # Check if we need to clean up existing resource group
-        if az group show --name ${{ env.AZURE_RESOURCE_GROUP }} >/dev/null 2>&1; then
-          echo "Resource group exists, deleting..."
-          az group delete --name ${{ env.AZURE_RESOURCE_GROUP }} --yes --no-wait
-          echo "Waiting for deletion to complete..."
-          while az group show --name ${{ env.AZURE_RESOURCE_GROUP }} >/dev/null 2>&1; do
-            echo "Still deleting..."
-            sleep 30
-          done
-          echo "Resource group deleted successfully"
-        else
-          echo "Resource group does not exist, proceeding..."
-        fi
+        echo "Current resources:"
+        az resource list --query "[].{name:name, type:type, resourceGroup:resourceGroup}" --output table
           
     - name: Terraform Init
       run: |
