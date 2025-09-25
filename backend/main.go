@@ -21,8 +21,7 @@ func main() {
 		AllowOrigins: []string{
 			"http://localhost:5173",
 			"http://localhost:3000",
-			"https://swa-marketplace-dev.azurestaticapps.net",
-			"https://ashy-coast-049069600.azurestaticapps.net", // Auto-generated Static Web App
+			"https://ashy-coast-049069600.2.azurestaticapps.net", // Your actual frontend URL
 		},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
