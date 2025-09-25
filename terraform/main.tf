@@ -60,7 +60,7 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
 resource "azurerm_static_web_app" "marketplace_frontend" {
   name                = "swa-marketplace-${var.environment}"
   resource_group_name = azurerm_resource_group.marketplace.name
-  location            = "East US2"
+  location            = "Southeast Asia"
   sku_tier            = "Free"
   sku_size            = "Free"
 }
