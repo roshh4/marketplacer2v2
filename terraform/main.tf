@@ -11,10 +11,9 @@ provider "azurerm" {
   features {}
 }
 
-# Resource Group
-resource "azurerm_resource_group" "marketplace" {
-  name     = "rg-marketplace-${var.environment}"
-  location = var.location
+# Resource Group (use existing)
+data "azurerm_resource_group" "marketplace" {
+  name = "rg-marketplace-${var.environment}"
 }
 
 # Container Apps Environment
