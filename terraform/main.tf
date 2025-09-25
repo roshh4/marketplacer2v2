@@ -63,11 +63,11 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
   end_ip_address   = "0.0.0.0"
 }
 
-# Container App (using existing one)
+# Container App
 resource "azurerm_container_app" "marketplace_backend" {
-  name                         = "marketplace-backend"
+  name                         = "ca-marketplace-backend-${var.environment}"
   container_app_environment_id = azurerm_container_app_environment.marketplace.id
-  resource_group_name          = "MarketPlaceCloud"
+  resource_group_name          = azurerm_resource_group.marketplace.name
   revision_mode                = "Single"
 
   template {
