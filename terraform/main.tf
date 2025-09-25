@@ -16,56 +16,28 @@ data "azurerm_resource_group" "marketplace" {
   name = "rg-marketplace-${var.environment}"
 }
 
-# Container Apps Environment
-resource "azurerm_container_app_environment" "marketplace" {
+# Container Apps Environment (use existing)
+data "azurerm_container_app_environment" "marketplace" {
   name                = "cae-marketplace-${var.environment}"
-  location            = data.azurerm_resource_group.marketplace.location
   resource_group_name = data.azurerm_resource_group.marketplace.name
 }
 
-# PostgreSQL Flexible Server
-resource "azurerm_postgresql_flexible_server" "marketplace" {
-  name                   = "psql-marketplace-${var.environment}-${random_string.suffix.result}"
-  resource_group_name    = data.azurerm_resource_group.marketplace.name
-  location               = data.azurerm_resource_group.marketplace.location
-  version                = "13"
-  administrator_login    = var.db_admin_username
-  administrator_password = var.db_admin_password
-  zone                   = "1"
-
-  storage_mb = 32768
-  sku_name   = "B_Standard_B1ms"
-
-  backup_retention_days = 7
+# PostgreSQL Flexible Server (use existing)
+data "azurerm_postgresql_flexible_server" "marketplace" {
+  name                = "psql-marketplace-${var.environment}"
+  resource_group_name = data.azurerm_resource_group.marketplace.name
 }
 
-# Random string for unique naming
-resource "random_string" "suffix" {
-  length  = 6
-  special = false
-  upper   = false
-}
-
-# PostgreSQL Database
-resource "azurerm_postgresql_flexible_server_database" "marketplace" {
+# PostgreSQL Database (use existing)
+data "azurerm_postgresql_flexible_server_database" "marketplace" {
   name      = var.db_name
-  server_id = azurerm_postgresql_flexible_server.marketplace.id
-  collation = "en_US.utf8"
-  charset   = "utf8"
-}
-
-# PostgreSQL Firewall Rule (Allow Azure Services)
-resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
-  name             = "AllowAzureServices"
-  server_id        = azurerm_postgresql_flexible_server.marketplace.id
-  start_ip_address = "0.0.0.0"
-  end_ip_address   = "0.0.0.0"
+  server_id = data.azurerm_postgresql_flexible_server.marketplace.id
 }
 
 # Container App
 resource "azurerm_container_app" "marketplace_backend" {
   name                         = "ca-marketplace-backend-${var.environment}"
-  container_app_environment_id = azurerm_container_app_environment.marketplace.id
+  container_app_environment_id = data.azurerm_container_app_environment.marketplace.id
   resource_group_name          = data.azurerm_resource_group.marketplace.name
   revision_mode                = "Single"
 
@@ -78,7 +50,7 @@ resource "azurerm_container_app" "marketplace_backend" {
 
       env {
         name  = "DB_HOST"
-        value = azurerm_postgresql_flexible_server.marketplace.fqdn
+        value = data.azurerm_postgresql_flexible_server.marketplace.fqdn
       }
 
       env {
