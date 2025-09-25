@@ -56,14 +56,8 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
   end_ip_address   = "0.0.0.0"
 }
 
-# Static Web App for Frontend
-resource "azurerm_static_web_app" "marketplace_frontend" {
-  name                = "swa-marketplace-${var.environment}"
-  resource_group_name = azurerm_resource_group.marketplace.name
-  location            = "Southeast Asia"
-  sku_tier            = "Free"
-  sku_size            = "Free"
-}
+# Static Web App created manually in Azure Portal
+# Name: swa-marketplace-dev
 
 # Container App
 resource "azurerm_container_app" "marketplace_backend" {
