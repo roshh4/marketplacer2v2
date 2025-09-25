@@ -142,7 +142,7 @@ jobs:
         npm run build
         
     - name: Deploy to Azure Static Web Apps
-      if: env.AZURE_STATIC_WEB_APPS_API_TOKEN != ''
+      if: secrets.AZURE_STATIC_WEB_APPS_API_TOKEN != ''
       uses: Azure/static-web-apps-deploy@v1
       with:
         azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
@@ -154,11 +154,9 @@ jobs:
     - name: Frontend deployment status
       run: |
         if [ -n "${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}" ]; then
-          echo "✅ Frontend deployed to Static Web App: swa-marketplace-dev"
+          echo "✅ Frontend deployed to Static Web App"
+          echo "Frontend URL: https://ashy-coast-049069600.2.azurestaticapps.net"
         else
           echo "⚠️ Frontend deployment skipped - AZURE_STATIC_WEB_APPS_API_TOKEN not set"
-          echo "Create Static Web App manually and add the deployment token to GitHub secrets"
-        fi |
-        cd terraform
-        FRONTEND_URL=$(terraform output -raw static_web_app_url)
-        echo "Frontend URL: ${FRONTEND_URL}"
+          echo "Add the Static Web App deployment token to GitHub secrets"
+        fi
