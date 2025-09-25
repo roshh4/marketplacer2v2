@@ -7,7 +7,7 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: rg-marketplace-dev
-  AZURE_LOCATION: eastasia
+  AZURE_LOCATION: southeastasia
 
 jobs:
   build-and-deploy-backend:
