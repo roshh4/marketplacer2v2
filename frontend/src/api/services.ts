@@ -5,7 +5,7 @@ import { Product, UserType, Chat, Message, PurchaseRequest } from '../types'
 export const productsAPI = {
   getAll: () => api.get<Product[]>('/products'),
   getById: (id: string) => api.get<Product>(`/products/${id}`),
-  create: (product: Omit<Product, 'id' | 'postedAt'>) => api.post<Product>('/products', product),
+  create: (formData: FormData) => api.post<Product>('/products', formData),
   update: (id: string, product: Partial<Product>) => api.put<Product>(`/products/${id}`, product),
   delete: (id: string) => api.delete(`/products/${id}`),
 }

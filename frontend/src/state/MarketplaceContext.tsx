@@ -8,7 +8,7 @@ import { productsAPI, usersAPI, chatsAPI, purchaseRequestsAPI, favoritesAPI, aut
 type MarketplaceContextType = {
   products: Product[]
   setProducts: React.Dispatch<React.SetStateAction<Product[]>>
-  addProduct: (p: Omit<Product, 'id' | 'postedAt'>) => Promise<Product>
+  addProduct: (p: Omit<Product, 'id' | 'postedAt' | 'images'> & { images: File[] }) => Promise<Product>
   updateProductStatus: (productId: string, status: Product['status']) => Promise<void>
   deleteProduct: (productId: string) => Promise<void>
   user: UserType | null
@@ -107,7 +107,7 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
     loadInitialData()
   }, [])
 
-  const addProduct = async (p: Omit<Product, 'id' | 'postedAt'>) => {
+  const addProduct = async (p: Omit<Product, 'id' | 'postedAt' | 'images'> & { images: File[] }) => {
     try {
       let currentUser = user
       
@@ -123,8 +123,21 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(currentUser))
       }
       
-      const productData = { ...p, sellerId: currentUser.id }
-      const response = await productsAPI.create(productData)
+      const formData = new FormData()
+      formData.append('title', p.title)
+      formData.append('price', p.price.toString())
+      formData.append('description', p.description)
+      formData.append('condition', p.condition)
+      formData.append('category', p.category)
+      formData.append('tags', JSON.stringify(p.tags))
+      formData.append('sellerId', currentUser.id)
+      formData.append('status', p.status)
+      
+      p.images.forEach((image) => {
+        formData.append('images', image)
+      })
+
+      const response = await productsAPI.create(formData)
       const newProduct = response.data
       setProducts((s) => [newProduct, ...s])
       return newProduct
@@ -135,7 +148,13 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       alert('❌ Sorry, we got some error creating your product. Please try again.')
       
       // Fallback to local creation
-      const prod: Product = { ...p, id: uid('p'), postedAt: nowIso(), status: 'available' }
+      const prod: Product = {
+        ...p,
+        id: uid('p'),
+        postedAt: nowIso(),
+        status: 'available',
+        images: p.images.map(f => URL.createObjectURL(f))
+      }
       setProducts((s) => [prod, ...s])
       return prod
     }

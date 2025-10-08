@@ -15,17 +15,14 @@ export default function ListItemPage({ onDone }: { onDone: () => void }) {
   const [desc, setDesc] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState('')
-  const [images, setImages] = useState<string[]>([])
+  const [images, setImages] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const onDrop = (files: FileList | null) => {
     if (!files) return
-    Array.from(files).slice(0, 6).forEach((f) => {
-      const reader = new FileReader()
-      reader.onload = (e) => setImages((s) => [e.target?.result as string, ...s])
-      reader.readAsDataURL(f)
-    })
+    const newImages = Array.from(files).slice(0, 6 - images.length)
+    setImages((s) => [...s, ...newImages])
   }
 
   const removeImg = (i: number) => setImages((s) => s.filter((_, idx) => idx !== i))
@@ -87,7 +84,7 @@ export default function ListItemPage({ onDone }: { onDone: () => void }) {
                   <div className="mt-3 grid grid-cols-4 gap-2">
                     {images.map((img, i) => (
                       <div key={i} className="relative">
-                        <img src={img} className="h-24 w-full object-cover rounded-md" />
+                        <img src={URL.createObjectURL(img)} className="h-24 w-full object-cover rounded-md" />
                         <button onClick={(e) => { e.stopPropagation(); removeImg(i) }} className="absolute top-1 right-1 p-1 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors duration-200 z-10">
                           <X size={12} />
                         </button>
@@ -161,7 +158,7 @@ export default function ListItemPage({ onDone }: { onDone: () => void }) {
               <div className="text-sm font-semibold">Preview</div>
               <div className="mt-2">
                 <div className="h-40 rounded-md overflow-hidden bg-black/10 grid place-items-center">
-                  {images[0] ? <img src={images[0]} className="w-full h-full object-cover" /> : <div className="opacity-60">No image yet</div>}
+                  {images[0] ? <img src={URL.createObjectURL(images[0])} className="w-full h-full object-cover" /> : <div className="opacity-60">No image yet</div>}
                 </div>
                 <div className="mt-2 font-semibold">{title || 'Item Title'}</div>
                 <div className="text-sm opacity-70">₹{price || '0'}</div>
