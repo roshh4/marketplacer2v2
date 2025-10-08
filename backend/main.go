@@ -13,6 +13,9 @@ func main() {
 	// Connect to database
 	config.ConnectDatabase()
 
+	// Connect to Azure Blob Storage
+	config.ConnectAzureBlobStorage()
+
 	// Create Gin router
 	r := gin.Default()
 

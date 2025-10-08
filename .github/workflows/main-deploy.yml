@@ -98,14 +98,16 @@ jobs:
         cd terraform
         terraform plan \
           -var="db_admin_password=${{ secrets.DB_PASSWORD }}" \
-          -var="container_image_tag=${{ steps.version.outputs.version }}"
+          -var="container_image_tag=${{ steps.version.outputs.version }}" \
+          -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}"
           
     - name: Terraform Apply
       run: |
         cd terraform
         terraform apply -auto-approve \
           -var="db_admin_password=${{ secrets.DB_PASSWORD }}" \
-          -var="container_image_tag=${{ steps.version.outputs.version }}"
+          -var="container_image_tag=${{ steps.version.outputs.version }}" \
+          -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}"
           
     - name: Get Backend URL
       id: terraform-output

@@ -56,6 +56,28 @@ resource "azurerm_postgresql_flexible_server_firewall_rule" "azure_services" {
   end_ip_address   = "0.0.0.0"
 }
 
+# Azure Storage Account for product images
+resource "azurerm_storage_account" "marketplace_storage" {
+  name                     = var.storage_account_name
+  resource_group_name      = azurerm_resource_group.marketplace.name
+  location                 = azurerm_resource_group.marketplace.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  account_kind             = "StorageV2"
+  access_tier              = "Hot"
+
+  tags = {
+    environment = var.environment
+  }
+}
+
+# Storage Container for images
+resource "azurerm_storage_container" "images" {
+  name                  = var.storage_container_name
+  storage_account_name  = azurerm_storage_account.marketplace_storage.name
+  container_access_type = "blob" # Public access to blobs
+}
+
 # Static Web App created manually in Azure Portal
 # Name: swa-marketplace-dev
 
@@ -112,6 +134,16 @@ resource "azurerm_container_app" "marketplace_backend" {
         name  = "DB_SSLMODE"
         value = "require"
       }
+
+      env {
+        name  = "AZURE_STORAGE_ACCOUNT_NAME"
+        value = var.storage_account_name
+      }
+
+      env {
+        name        = "AZURE_STORAGE_CONNECTION_STRING"
+        secret_name = "storage-connection-string"
+      }
     }
 
     min_replicas = 0
@@ -121,6 +153,11 @@ resource "azurerm_container_app" "marketplace_backend" {
   secret {
     name  = "db-password"
     value = var.db_admin_password
+  }
+
+  secret {
+    name  = "storage-connection-string"
+    value = azurerm_storage_account.marketplace_storage.primary_connection_string
   }
 
   ingress {

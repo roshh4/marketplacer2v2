@@ -1,11 +1,19 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"mime/multipart"
 	"net/http"
+	"path/filepath"
+	"strconv"
 	"marketplace-backend/config"
 	"marketplace-backend/models"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -57,7 +65,7 @@ func GetProduct(c *gin.Context) {
 	c.JSON(http.StatusOK, responseDTO)
 }
 
-// CreateProduct creates a new product
+// CreateProduct creates a new product with image uploads
 func CreateProduct(c *gin.Context) {
 	// Get authenticated user ID
 	userID, exists := c.Get("userID")
@@ -66,15 +74,45 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
-	var req CreateProductRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	// Parse multipart form
+	if err := c.Request.ParseMultipartForm(10 << 20); err != nil { // 10 MB max size
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse form"})
 		return
 	}
 
-	// Convert arrays to JSON strings
-	imagesJSON, _ := json.Marshal(req.Images)
-	tagsJSON, _ := json.Marshal(req.Tags)
+	// Get form values
+	title := c.Request.FormValue("title")
+	priceStr := c.Request.FormValue("price")
+	description := c.Request.FormValue("description")
+	condition := c.Request.FormValue("condition")
+	category := c.Request.FormValue("category")
+	tagsStr := c.Request.FormValue("tags") // Assuming tags are a comma-separated string
+
+	price, err := strconv.ParseFloat(priceStr, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid price format"})
+		return
+	}
+
+	// Handle image uploads
+	form, err := c.MultipartForm()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get multipart form"})
+		return
+	}
+	files := form.File["images"]
+
+	var imageURLs []string
+	for _, file := range files {
+		url, err := uploadImageToAzure(file)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to upload image: %v", err)})
+			return
+		}
+		imageURLs = append(imageURLs, url)
+	}
+
+	imagesJSON, _ := json.Marshal(imageURLs)
 
 	// Get user's college
 	var user models.User
@@ -84,13 +122,13 @@ func CreateProduct(c *gin.Context) {
 	}
 
 	product := models.Product{
-		Title:       req.Title,
-		Price:       req.Price,
-		Description: req.Description,
+		Title:       title,
+		Price:       price,
+		Description: description,
 		Images:      string(imagesJSON),
-		Condition:   req.Condition,
-		Category:    req.Category,
-		Tags:        string(tagsJSON),
+		Condition:   condition,
+		Category:    category,
+		Tags:        tagsStr, // Storing as a simple string for now
 		Status:      "available",
 		SellerID:    user.ID,
 		CollegeID:   user.CollegeID,
@@ -107,6 +145,41 @@ func CreateProduct(c *gin.Context) {
 
 	responseDTO := ProductDTOFromModel(&product)
 	c.JSON(http.StatusCreated, responseDTO)
+}
+
+func uploadImageToAzure(file *multipart.FileHeader) (string, error) {
+	if config.BlobClient == nil {
+		return "", fmt.Errorf("Azure Blob Storage client is not initialized")
+	}
+
+	// Generate a unique file name
+	ext := filepath.Ext(file.Filename)
+	fileName := fmt.Sprintf("product-images/%s%s", uuid.New().String(), ext)
+
+	// Open the file
+	src, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer src.Close()
+
+	// Read the file into a buffer
+	buffer, err := io.ReadAll(src)
+	if err != nil {
+		return "", err
+	}
+
+	// Upload to Azure Blob Storage
+	containerName := "images" // As defined in Terraform
+	_, err = config.BlobClient.UploadBuffer(context.Background(), containerName, fileName, buffer, &azblob.UploadBufferOptions{})
+	if err != nil {
+		log.Printf("Failed to upload to Azure: %v", err)
+		return "", err
+	}
+
+	// Construct the public URL
+	url := fmt.Sprintf("%s/%s/%s", config.GetBlobContainerURL(), containerName, fileName)
+	return url, nil
 }
 
 // UpdateProduct updates an existing product

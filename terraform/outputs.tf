@@ -25,6 +25,11 @@ output "container_app_name" {
   value       = azurerm_container_app.marketplace_backend.name
 }
 
+output "storage_account_name" {
+  description = "Name of the Azure Storage Account"
+  value       = azurerm_storage_account.marketplace_storage.name
+}
+
 output "postgresql_server_name" {
   description = "Name of the PostgreSQL server"
   value       = azurerm_postgresql_flexible_server.marketplace.name

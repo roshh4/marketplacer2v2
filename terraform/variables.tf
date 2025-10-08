@@ -28,6 +28,17 @@ variable "db_name" {
   default     = "marketplace"
 }
 
+variable "storage_account_name" {
+  description = "Azure Storage Account name"
+  type        = string
+}
+
+variable "storage_container_name" {
+  description = "Azure Storage Container name for images"
+  type        = string
+  default     = "images"
+}
+
 variable "container_image_tag" {
   description = "Docker image tag for the container"
   type        = string
