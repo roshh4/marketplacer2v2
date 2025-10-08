@@ -94,6 +94,8 @@ jobs:
         terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_container_app.marketplace_backend "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/containerApps/ca-marketplace-backend-dev" || true
         
         terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_storage_account.marketplace_storage "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.Storage/storageAccounts/${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" || true
+
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_storage_container.images "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.Storage/storageAccounts/${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}/blobServices/default/containers/images" || true
         
     - name: Terraform Plan
       run: |
