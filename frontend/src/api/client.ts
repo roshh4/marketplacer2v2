@@ -14,8 +14,14 @@ api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token')
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Let browser set Content-Type for FormData
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+    }
+
     return config
   },
   (error) => Promise.reject(error)

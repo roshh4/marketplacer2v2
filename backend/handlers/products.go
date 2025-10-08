@@ -74,20 +74,22 @@ func CreateProduct(c *gin.Context) {
 		return
 	}
 
-	// Parse multipart form
-	if err := c.Request.ParseMultipartForm(10 << 20); err != nil { // 10 MB max size
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to parse form"})
-		return
-	}
+	// Get form values using Gin's methods
+	title := c.PostForm("title")
+	priceStr := c.PostForm("price")
+	description := c.PostForm("description")
+	condition := c.PostForm("condition")
+	category := c.PostForm("category")
+	tagsStr := c.PostForm("tags")
 
-	// Get form values
-	title := c.Request.FormValue("title")
-	priceStr := c.Request.FormValue("price")
-	description := c.Request.FormValue("description")
-	condition := c.Request.FormValue("condition")
-	category := c.Request.FormValue("category")
-	tagsStr := c.Request.FormValue("tags") // Assuming tags are a comma-separated string
-
+	log.Println("--- Received form data ---")
+	log.Println("Title:", title)
+	log.Println("Price:", priceStr)
+	log.Println("Description:", description)
+	log.Println("Condition:", condition)
+	log.Println("Category:", category)
+	log.Println("Tags:", tagsStr)
+	log.Println("--------------------------")
 	price, err := strconv.ParseFloat(priceStr, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid price format"})

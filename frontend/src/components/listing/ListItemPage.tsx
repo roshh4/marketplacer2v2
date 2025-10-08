@@ -9,7 +9,7 @@ import { Product } from '../../types'
 export default function ListItemPage({ onDone }: { onDone: () => void }) {
   const { addProduct, user } = useMarketplace()
   const [title, setTitle] = useState('')
-  const [price, setPrice] = useState(0)
+  const [price, setPrice] = useState<number | ''>('')
   const [condition, setCondition] = useState<Product['condition']>('Good')
   const [category, setCategory] = useState('Books')
   const [desc, setDesc] = useState('')
@@ -40,12 +40,23 @@ export default function ListItemPage({ onDone }: { onDone: () => void }) {
   }
 
   const submit = async () => {
-    if (!title || !price || images.length === 0) return alert('Please enter title, price and at least one image')
+    if (!title || !isFinite(price as number) || (price as number) < 0 || images.length === 0) return alert('Please enter a valid title, a non-negative price, and at least one image')
+
+    console.log('--- Submitting product ---');
+    console.log('Title:', title);
+    console.log('Price:', price);
+    console.log('Description:', desc);
+    console.log('Condition:', condition);
+    console.log('Category:', category);
+    console.log('Tags:', tags);
+    console.log('Images:', images);
+    console.log('--------------------------');
+
     setLoading(true)
     await new Promise((r) => setTimeout(r, 800))
     addProduct({
       title,
-      price,
+      price: price as number,
       description: desc,
       images,
       condition,
@@ -102,7 +113,7 @@ export default function ListItemPage({ onDone }: { onDone: () => void }) {
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-sm font-semibold">Price (₹)</label>
-                  <input type="number" value={price} onChange={(e) => setPrice(Number(e.target.value))} className="w-full mt-2 p-2 bg-transparent border rounded-md" />
+                  <input type="number" value={price} onChange={(e) => setPrice(e.target.value === '' ? '' : Number(e.target.value))} className="w-full mt-2 p-2 bg-transparent border rounded-md" />
                 </div>
                 <div>
                   <label className="text-sm font-semibold">Condition</label>

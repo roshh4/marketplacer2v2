@@ -129,7 +129,7 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       formData.append('description', p.description)
       formData.append('condition', p.condition)
       formData.append('category', p.category)
-      formData.append('tags', JSON.stringify(p.tags))
+      formData.append('tags', p.tags.join(','))
       formData.append('sellerId', currentUser.id)
       formData.append('status', p.status)
       
