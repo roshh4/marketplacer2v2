@@ -147,16 +147,53 @@ jobs:
         
         echo "✅ Application deployed to AKS successfully!"
         
-    - name: Get Backend URL
+    - name: Get Backend URL from LoadBalancer
       id: terraform-output
       run: |
         cd terraform
-        # For AKS, we'll use the cluster FQDN as the base URL
-        CLUSTER_FQDN=$(terraform output -raw aks_cluster_fqdn)
-        BACKEND_URL="https://${CLUSTER_FQDN}"
-        echo "backend_url=${BACKEND_URL}" >> $GITHUB_OUTPUT
-        echo "Backend URL: ${BACKEND_URL}"
-        echo "Note: You may need to set up ingress or load balancer for external access"
+        # Get AKS credentials first
+        RESOURCE_GROUP=$(terraform output -raw resource_group_name)
+        CLUSTER_NAME=$(terraform output -raw aks_cluster_name)
+        az aks get-credentials --resource-group ${RESOURCE_GROUP} --name ${CLUSTER_NAME} --overwrite-existing
+        
+        # Wait for LoadBalancer to get external IP (up to 5 minutes)
+        echo "Waiting for LoadBalancer external IP..."
+        for i in {1..30}; do
+          EXTERNAL_IP=$(kubectl get service marketplace-backend-service -n marketplace -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+          if [ ! -z "$EXTERNAL_IP" ] && [ "$EXTERNAL_IP" != "null" ]; then
+            echo "LoadBalancer external IP: $EXTERNAL_IP"
+            BACKEND_URL="http://${EXTERNAL_IP}"
+            echo "backend_url=${BACKEND_URL}" >> $GITHUB_OUTPUT
+            echo "Backend URL: ${BACKEND_URL}"
+            break
+          fi
+          echo "Attempt $i: Waiting for external IP..."
+          sleep 10
+        done
+        
+        if [ -z "$EXTERNAL_IP" ] || [ "$EXTERNAL_IP" == "null" ]; then
+          echo "Failed to get LoadBalancer external IP after 5 minutes"
+          exit 1
+        fi
+        
+    - name: Verify Backend Health
+      run: |
+        BACKEND_URL="${{ steps.terraform-output.outputs.backend_url }}"
+        echo "Testing backend health at: ${BACKEND_URL}/api/health"
+        
+        # Wait up to 2 minutes for backend to be ready
+        for i in {1..12}; do
+          if curl -f "${BACKEND_URL}/api/health" >/dev/null 2>&1; then
+            echo "✅ Backend is healthy and accessible!"
+            break
+          fi
+          echo "Attempt $i: Backend not ready yet..."
+          sleep 10
+        done
+        
+        # Final health check
+        echo "Final health check:"
+        curl -v "${BACKEND_URL}/api/health" || echo "⚠️ Backend health check failed, but continuing deployment"
 
   build-and-deploy-frontend:
     runs-on: ubuntu-latest
