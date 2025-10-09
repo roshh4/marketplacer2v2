@@ -1,6 +1,17 @@
-output "container_app_url" {
-  description = "URL of the deployed container app"
-  value       = "https://${azurerm_container_app.marketplace_backend.ingress[0].fqdn}"
+output "aks_cluster_name" {
+  description = "Name of the AKS cluster"
+  value       = azurerm_kubernetes_cluster.marketplace.name
+}
+
+output "aks_cluster_fqdn" {
+  description = "FQDN of the AKS cluster"
+  value       = azurerm_kubernetes_cluster.marketplace.fqdn
+}
+
+output "aks_kube_config" {
+  description = "Kubeconfig for the AKS cluster"
+  value       = azurerm_kubernetes_cluster.marketplace.kube_config_raw
+  sensitive   = true
 }
 
 # Static Web App outputs removed - created manually
@@ -18,11 +29,6 @@ output "database_name" {
 output "resource_group_name" {
   description = "Name of the resource group"
   value       = azurerm_resource_group.marketplace.name
-}
-
-output "container_app_name" {
-  description = "Name of the container app"
-  value       = azurerm_container_app.marketplace_backend.name
 }
 
 output "storage_account_name" {

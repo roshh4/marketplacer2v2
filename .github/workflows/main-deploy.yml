@@ -63,6 +63,11 @@ jobs:
             "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
           }
           
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.30.0'
+          
     - name: Verify clean environment
       run: |
         echo "Current Azure account:"
@@ -83,16 +88,14 @@ jobs:
         # Try to import existing resources, ignore errors if they don't exist
         terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_resource_group.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev" || true
         
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_container_app_environment.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/managedEnvironments/cae-marketplace-dev" || true
-        
+        # Import existing PostgreSQL resources
         terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_postgresql_flexible_server.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/psql-marketplace-dev" || true
         
         terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_postgresql_flexible_server_database.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/psql-marketplace-dev/databases/marketplace" || true
         
         terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_postgresql_flexible_server_firewall_rule.azure_services "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/psql-marketplace-dev/firewallRules/AllowAzureServices" || true
         
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_container_app.marketplace_backend "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/containerApps/ca-marketplace-backend-dev" || true
-        
+        # Import existing storage resources
         terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_storage_account.marketplace_storage "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.Storage/storageAccounts/${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" || true
 
         terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_storage_container.images "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/images" || true
@@ -113,13 +116,44 @@ jobs:
           -var="container_image_tag=${{ steps.version.outputs.version }}" \
           -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}"
           
+    - name: Deploy Kubernetes resources
+      run: |
+        cd terraform
+        # Get AKS credentials
+        RESOURCE_GROUP=$(terraform output -raw resource_group_name)
+        CLUSTER_NAME=$(terraform output -raw aks_cluster_name)
+        echo "Resource Group: ${RESOURCE_GROUP}"
+        echo "Cluster Name: ${CLUSTER_NAME}"
+        
+        # Get AKS credentials
+        az aks get-credentials --resource-group ${RESOURCE_GROUP} --name ${CLUSTER_NAME} --overwrite-existing
+        
+        # Deploy Kubernetes resources
+        cd ..
+        kubectl apply -f k8s/
+        
+        # Update the deployment with the new image tag
+        kubectl set image deployment/marketplace-backend marketplace-backend=roshh4/marketplace-backend-alpine-amd64:${{ steps.version.outputs.version }} -n marketplace
+        
+        # Wait for rollout to complete
+        kubectl rollout status deployment/marketplace-backend -n marketplace --timeout=300s
+        
+        # Verify deployment
+        kubectl get pods -n marketplace
+        kubectl get services -n marketplace
+        
+        echo "✅ Application deployed to AKS successfully!"
+        
     - name: Get Backend URL
       id: terraform-output
       run: |
         cd terraform
-        BACKEND_URL=$(terraform output -raw container_app_url)
+        # For AKS, we'll use the cluster FQDN as the base URL
+        CLUSTER_FQDN=$(terraform output -raw aks_cluster_fqdn)
+        BACKEND_URL="https://${CLUSTER_FQDN}"
         echo "backend_url=${BACKEND_URL}" >> $GITHUB_OUTPUT
         echo "Backend URL: ${BACKEND_URL}"
+        echo "Note: You may need to set up ingress or load balancer for external access"
 
   build-and-deploy-frontend:
     runs-on: ubuntu-latest
