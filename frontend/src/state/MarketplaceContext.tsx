@@ -143,20 +143,8 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       return newProduct
     } catch (error) {
       console.error('Failed to create product:', error)
-      
-      // Show error alert to user - simple alert for now since toast system needs more setup
       alert('❌ Sorry, we got some error creating your product. Please try again.')
-      
-      // Fallback to local creation
-      const prod: Product = {
-        ...p,
-        id: uid('p'),
-        postedAt: nowIso(),
-        status: 'available',
-        images: p.images.map(f => URL.createObjectURL(f))
-      }
-      setProducts((s) => [prod, ...s])
-      return prod
+      throw error
     }
   }
 
@@ -166,8 +154,8 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       setProducts((s) => s.map((p) => (p.id === productId ? { ...p, status } : p)))
     } catch (error) {
       console.error('Failed to update product status:', error)
-      // Fallback to local update
-      setProducts((s) => s.map((p) => (p.id === productId ? { ...p, status } : p)))
+      alert('❌ Failed to update product status. Please try again.')
+      throw error
     }
   }
 
@@ -183,9 +171,8 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(newUser))
     } catch (error) {
       console.error('Failed to update user:', error)
-      // Fallback to local update
-      setUser(updatedUser)
-      localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(updatedUser))
+      alert('❌ Failed to update user. Please try again.')
+      throw error
     }
   }
 
@@ -207,10 +194,8 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error('Failed to create chat:', error)
-      // Fallback to local creation
-      const chat: Chat = { id: uid('c'), productId, participants, messages: [] }
-      setChats((s) => [...s, chat])
-      return chat
+      alert('❌ Failed to create chat. Please try again.')
+      throw error
     }
   }
 
@@ -223,8 +208,8 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       setChats((s) => s.map((c) => (c.id === chatId ? { ...c, messages: [...c.messages, newMessage] } : c)))
     } catch (error) {
       console.error('Failed to send message:', error)
-      // Fallback to local creation
-      setChats((s) => s.map((c) => (c.id === chatId ? { ...c, messages: [...c.messages, { id: uid('m'), from, text, at: nowIso() }] } : c)))
+      alert('❌ Failed to send message. Please try again.')
+      throw error
     }
   }
 
@@ -246,8 +231,8 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error('Failed to toggle favorite:', error)
-      // Fallback to local update
-      setFavorites((prev) => (prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]))
+      alert('❌ Failed to toggle favorite. Please try again.')
+      throw error
     }
   }
 
@@ -259,10 +244,8 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       return newRequest
     } catch (error) {
       console.error('Failed to create purchase request:', error)
-      // Fallback to local creation
-      const request: PurchaseRequest = { id: uid('pr'), productId, buyerId, sellerId, status: 'pending', createdAt: nowIso() }
-      setPurchaseRequests((s) => [request, ...s])
-      return request
+      alert('❌ Failed to create purchase request. Please try again.')
+      throw error
     }
   }
 
@@ -280,6 +263,7 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
         console.error('Error status:', error.response.status)
       }
       alert('❌ Failed to delete product. Please try again.')
+      throw error
     }
   }
 
@@ -294,12 +278,8 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (error) {
       console.error('Failed to update purchase request:', error)
-      // Fallback to local update
-      setPurchaseRequests((s) => s.map((r) => (r.id === requestId ? { ...r, status } : r)))
-      if (status === 'accepted') {
-        const request = purchaseRequests.find((r) => r.id === requestId)
-        if (request) await updateProductStatus(request.productId, 'sold')
-      }
+      alert('❌ Failed to update purchase request. Please try again.')
+      throw error
     }
   }
 

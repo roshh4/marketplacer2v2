@@ -54,8 +54,10 @@ type Product struct {
 // Chat represents a conversation between users
 type Chat struct {
 	ID           uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
-	ProductID    uuid.UUID `json:"product_id" gorm:"type:uuid;not null"`
-	Product      Product   `json:"product" gorm:"foreignKey:ProductID"`
+	ProductID         uuid.UUID `json:"product_id" gorm:"type:uuid;not null"`
+	Product           Product   `json:"product" gorm:"foreignKey:ProductID"`
+	PurchaseRequestID uuid.UUID `json:"purchase_request_id" gorm:"type:uuid;not null"`
+	IsAccepted        bool      `json:"is_accepted" gorm:"default:false"`
 	Participants []User    `json:"participants" gorm:"many2many:chat_participants;"`
 	Messages     []Message `json:"messages" gorm:"foreignKey:ChatID"`
 	CollegeID    uuid.UUID `json:"college_id" gorm:"type:uuid;not null"`

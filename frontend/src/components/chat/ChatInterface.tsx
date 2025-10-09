@@ -44,15 +44,6 @@ export default function ChatInterface({ chatId, onClose, isMobile = false }: Cha
     pushMessage(chat.id, user?.id || 'guest', text.trim())
     setText('')
     
-    // Simulate response
-    setTimeout(() => {
-      const otherParticipantId = chat.participants.find((p: any) => {
-        const participantId = typeof p === 'string' ? p : p.id
-        return participantId !== user?.id
-      })
-      const participantId = typeof otherParticipantId === 'string' ? otherParticipantId : (otherParticipantId as any)?.id || 'seller'
-      pushMessage(chat.id, participantId, "Thanks! I'm available — let's discuss pickup.")
-    }, 900 + Math.random() * 1200)
   }
 
   const handlePurchaseRequest = (requestId: string, status: 'accepted' | 'declined') => {
@@ -88,8 +79,8 @@ export default function ChatInterface({ chatId, onClose, isMobile = false }: Cha
 
       {/* Messages */}
       <div ref={messagesRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Purchase Requests */}
-        {pendingRequests.map((request) => (
+        {/* Purchase Requests - Hidden */}
+        {false && pendingRequests.map((request) => (
           <div key={request.id} className="bg-green-500/20 border border-green-500/30 rounded-xl p-4">
             <div className="text-sm font-semibold text-green-400 mb-2">Purchase Request</div>
             <div className="text-sm opacity-90 mb-3">
@@ -116,7 +107,7 @@ export default function ChatInterface({ chatId, onClose, isMobile = false }: Cha
 
         {/* Chat Messages */}
         {chat.messages.map((message) => {
-          const isFromUser = message.from === user?.id
+          const isFromUser = message.from_id === user?.id
           
           return (
             <div key={message.id} className={`flex ${isFromUser ? 'justify-end' : 'justify-start'}`}>
@@ -127,7 +118,7 @@ export default function ChatInterface({ chatId, onClose, isMobile = false }: Cha
               }`}>
                 <div className="text-sm leading-relaxed">{message.text}</div>
                 <div className={`text-xs mt-2 ${isFromUser ? 'text-white/70' : 'text-white/50'}`}>
-                  {new Date(message.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
             </div>

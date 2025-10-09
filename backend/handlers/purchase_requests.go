@@ -23,7 +23,7 @@ func GetPurchaseRequests(c *gin.Context) {
 	c.JSON(http.StatusOK, requests)
 }
 
-// CreatePurchaseRequest creates a new purchase request
+// CreatePurchaseRequest creates a new purchase request and a corresponding chat
 func CreatePurchaseRequest(c *gin.Context) {
 	var request models.PurchaseRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -31,19 +31,52 @@ func CreatePurchaseRequest(c *gin.Context) {
 		return
 	}
 
-	// Get product to determine college
+	// Get product, seller and buyer
 	var product models.Product
 	if err := config.DB.First(&product, request.ProductID).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Product not found"})
 		return
 	}
+	var buyer models.User
+	if err := config.DB.First(&buyer, request.BuyerID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Buyer not found"})
+		return
+	}
+	var seller models.User
+	if err := config.DB.First(&seller, request.SellerID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Seller not found"})
+		return
+	}
 
+	tx := config.DB.Begin()
+
+	// Create the purchase request
 	request.CollegeID = product.CollegeID
 	request.Status = "pending"
-
-	result := config.DB.Create(&request)
-	if result.Error != nil {
+	if err := tx.Create(&request).Error; err != nil {
+		tx.Rollback()
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create purchase request"})
+		return
+	}
+
+	// Create the chat (auto-accepted since you handle acceptance elsewhere)
+	chat := models.Chat{
+		ProductID:         request.ProductID,
+		PurchaseRequestID: request.ID,
+		CollegeID:         product.CollegeID,
+		Participants:      []models.User{buyer, seller},
+		IsAccepted:        true,
+	}
+	if err := tx.Create(&chat).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create chat"})
+		return
+	}
+
+
+	if err := tx.Commit().Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to commit transaction"})
 		return
 	}
 
@@ -85,9 +118,13 @@ func UpdatePurchaseRequest(c *gin.Context) {
 		return
 	}
 
-	// If accepted, update product status to sold
+	// If accepted, update product status to sold and update chat to be accepted
 	if updateData.Status == "accepted" {
 		config.DB.Model(&models.Product{}).Where("id = ?", request.ProductID).Update("status", "sold")
+		var chat models.Chat
+		config.DB.Where("purchase_request_id = ?", request.ID).First(&chat)
+		config.DB.Model(&chat).Update("is_accepted", true)
+
 	}
 
 	// Preload relationships for response

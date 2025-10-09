@@ -60,7 +60,12 @@ func ConnectDatabase() {
 	// Only uncomment these lines if you need to reset the database schema during development
 	// DB.Migrator().DropTable(&models.Product{}, &models.Chat{}, &models.Message{}, &models.PurchaseRequest{}, &models.Favorite{})
 	// DB.Migrator().DropTable("chat_participants")
-	
+
+	// Handle existing NULL values in messages.from_id before migration
+	if err := DB.Exec("UPDATE messages SET from_id = (SELECT id FROM users LIMIT 1) WHERE from_id IS NULL").Error; err != nil {
+		log.Printf("Warning: Could not update NULL from_id values: %v", err)
+	}
+
 	// Auto-migrate the schema
 	err = DB.AutoMigrate(
 		&models.College{},
@@ -73,14 +78,25 @@ func ConnectDatabase() {
 	)
 
 	if err != nil {
-		log.Fatal("Failed to migrate database:", err)
+		log.Printf("Migration failed, trying alternative approach: %v", err)
+
+		// Alternative: Drop and recreate the messages table if migration fails
+		if err := DB.Migrator().DropTable(&models.Message{}); err != nil {
+			log.Printf("Failed to drop messages table: %v", err)
+		}
+
+		// Retry migration
+		err = DB.AutoMigrate(&models.Message{})
+		if err != nil {
+			log.Fatal("Failed to migrate database after cleanup:", err)
+		}
 	}
 
 	log.Println("Database migration completed!")
 
 	// Seed default college if none exists
 	seedDefaultCollege()
-	
+
 	// Seed default products if none exist
 	seedDefaultProducts()
 }
@@ -88,13 +104,13 @@ func ConnectDatabase() {
 func seedDefaultCollege() {
 	var count int64
 	DB.Model(&models.College{}).Count(&count)
-	
+
 	if count == 0 {
 		defaultCollege := models.College{
 			Name:   "Default University",
 			Domain: "default.edu",
 		}
-		
+
 		if err := DB.Create(&defaultCollege).Error; err != nil {
 			log.Printf("Failed to create default college: %v", err)
 		} else {
@@ -106,7 +122,7 @@ func seedDefaultCollege() {
 func seedDefaultProducts() {
 	var count int64
 	DB.Model(&models.Product{}).Count(&count)
-	
+
 	if count == 0 {
 		// Get the default college ID
 		var defaultCollege models.College
@@ -128,7 +144,7 @@ func seedDefaultProducts() {
 				Department: "Computer Science",
 				CollegeID:  defaultCollege.ID,
 			}
-			
+
 			if err := DB.Create(&defaultUser).Error; err != nil {
 				log.Printf("Failed to create default user: %v", err)
 				return
@@ -184,4 +200,3 @@ func seedDefaultProducts() {
 		log.Printf("Successfully seeded %d default products!", len(defaultProducts))
 	}
 }
-

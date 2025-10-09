@@ -41,7 +41,6 @@ func SetupRoutes(r *gin.Engine) {
 		chats := api.Group("/chats")
 		{
 			chats.GET("", handlers.GetChats)
-			chats.POST("", handlers.CreateChat)
 			chats.GET("/:id", handlers.GetChat)
 			chats.GET("/:id/messages", handlers.GetChatMessages)
 			chats.POST("/:id/messages", handlers.CreateMessage)

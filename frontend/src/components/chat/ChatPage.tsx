@@ -21,9 +21,6 @@ export default function ChatPage({ chatId, onClose }: { chatId: string; onClose:
     if (!text.trim()) return
     pushMessage(chat.id, user?.id || 'guest', text.trim())
     setText('')
-    setTimeout(() => {
-      pushMessage(chat.id, chat.participants.find((p) => p !== user?.id) || 'seller', "Thanks! I'm available — let's discuss pickup.")
-    }, 900 + Math.random() * 1200)
   }
 
   const handlePurchaseRequest = (requestId: string, status: 'accepted' | 'declined') => {
@@ -45,7 +42,7 @@ export default function ChatPage({ chatId, onClose }: { chatId: string; onClose:
       </div>
 
       <div ref={ref} className="p-4 overflow-auto h-[calc(100vh-160px)] space-y-3">
-        {pendingRequests.map((request) => (
+        {false && pendingRequests.map((request) => (
           <div key={request.id} className="bg-green-500/20 border border-green-500/30 rounded-lg p-3">
             <div className="text-sm font-semibold text-green-400 mb-2">Purchase Request</div>
             <div className="text-xs opacity-80 mb-3">{user?.name || 'User'} wants to buy this product. Will you accept?</div>
@@ -63,10 +60,10 @@ export default function ChatPage({ chatId, onClose }: { chatId: string; onClose:
         ))}
 
         {chat.messages.map((m) => (
-          <div key={m.id} className={`flex ${m.from === user?.id ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[80%] p-3 rounded-xl ${m.from === user?.id ? 'bg-indigo-500 text-white' : 'bg-white/8'}`}>
+          <div key={m.id} className={`flex ${m.from_id === user?.id ? 'justify-end' : 'justify-start'}`}>
+            <div className={`max-w-[80%] p-3 rounded-xl ${m.from_id === user?.id ? 'bg-indigo-500 text-white' : 'bg-white/8'}`}>
               <div className="text-sm">{m.text}</div>
-              <div className="text-xs opacity-60 text-right mt-1">{new Date(m.at).toLocaleTimeString()}</div>
+              <div className="text-xs opacity-60 text-right mt-1">{new Date(m.created_at).toLocaleTimeString()}</div>
             </div>
           </div>
         ))}
