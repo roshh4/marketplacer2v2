@@ -131,6 +131,27 @@ jobs:
         # Get AKS credentials
         az aks get-credentials --resource-group ${RESOURCE_GROUP} --name ${CLUSTER_NAME} --overwrite-existing
         
+        # Install NGINX Ingress Controller
+        echo "Installing NGINX Ingress Controller..."
+        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+        
+        # Wait for NGINX Ingress to be ready
+        kubectl wait --namespace ingress-nginx \
+          --for=condition=ready pod \
+          --selector=app.kubernetes.io/component=controller \
+          --timeout=300s
+        
+        # Generate self-signed certificate
+        echo "Generating self-signed certificate..."
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout tls.key -out tls.crt \
+          -subj "/C=US/ST=CA/L=SF/O=Marketplace/CN=marketplace-api"
+        
+        # Create TLS secret
+        kubectl create secret tls marketplace-tls-secret \
+          --cert=tls.crt --key=tls.key \
+          --namespace=marketplace --dry-run=client -o yaml | kubectl apply -f -
+        
         # Deploy Kubernetes resources
         cd ..
         kubectl apply -f k8s/
@@ -156,34 +177,34 @@ jobs:
         CLUSTER_NAME=$(terraform output -raw aks_cluster_name)
         az aks get-credentials --resource-group ${RESOURCE_GROUP} --name ${CLUSTER_NAME} --overwrite-existing
         
-        # Wait for LoadBalancer to get external IP (up to 5 minutes)
-        echo "Waiting for LoadBalancer external IP..."
+        # Wait for NGINX Ingress LoadBalancer to get external IP (up to 5 minutes)
+        echo "Waiting for NGINX Ingress external IP..."
         for i in {1..30}; do
-          EXTERNAL_IP=$(kubectl get service marketplace-backend-service -n marketplace -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+          EXTERNAL_IP=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
           if [ ! -z "$EXTERNAL_IP" ] && [ "$EXTERNAL_IP" != "null" ]; then
-            echo "LoadBalancer external IP: $EXTERNAL_IP"
-            BACKEND_URL="http://${EXTERNAL_IP}"
+            echo "NGINX Ingress external IP: $EXTERNAL_IP"
+            BACKEND_URL="https://${EXTERNAL_IP}"
             echo "backend_url=${BACKEND_URL}" >> $GITHUB_OUTPUT
             echo "Backend URL: ${BACKEND_URL}"
             break
           fi
-          echo "Attempt $i: Waiting for external IP..."
+          echo "Attempt $i: Waiting for NGINX Ingress external IP..."
           sleep 10
         done
         
         if [ -z "$EXTERNAL_IP" ] || [ "$EXTERNAL_IP" == "null" ]; then
-          echo "Failed to get LoadBalancer external IP after 5 minutes"
+          echo "Failed to get NGINX Ingress external IP after 5 minutes"
           exit 1
         fi
         
     - name: Verify Backend Health
       run: |
         BACKEND_URL="${{ steps.terraform-output.outputs.backend_url }}"
-        echo "Testing backend health at: ${BACKEND_URL}/api/health"
+        echo "Testing backend health at: ${BACKEND_URL}/health"
         
         # Wait up to 2 minutes for backend to be ready
         for i in {1..12}; do
-          if curl -f "${BACKEND_URL}/api/health" >/dev/null 2>&1; then
+          if curl -k -f "${BACKEND_URL}/health" >/dev/null 2>&1; then
             echo "✅ Backend is healthy and accessible!"
             break
           fi
@@ -193,7 +214,7 @@ jobs:
         
         # Final health check
         echo "Final health check:"
-        curl -v "${BACKEND_URL}/api/health" || echo "⚠️ Backend health check failed, but continuing deployment"
+        curl -k -v "${BACKEND_URL}/health" || echo "⚠️ Backend health check failed, but continuing deployment"
 
   build-and-deploy-frontend:
     runs-on: ubuntu-latest

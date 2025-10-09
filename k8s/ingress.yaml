@@ -5,17 +5,15 @@ metadata:
   namespace: marketplace
   annotations:
     kubernetes.io/ingress.class: "nginx"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
 spec:
   tls:
   - hosts:
-    - api.yourdomain.com  # Replace with your actual domain
-    secretName: marketplace-tls
+    - "*"
+    secretName: marketplace-tls-secret
   rules:
-  - host: api.yourdomain.com  # Replace with your actual domain
-    http:
+  - http:
       paths:
       - path: /
         pathType: Prefix
