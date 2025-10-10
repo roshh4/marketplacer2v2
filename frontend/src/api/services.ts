@@ -8,6 +8,15 @@ export const productsAPI = {
   create: (formData: FormData) => api.post<Product>('/products', formData),
   update: (id: string, product: Partial<Product>) => api.put<Product>(`/products/${id}`, product),
   delete: (id: string) => api.delete(`/products/${id}`),
+  generateDescription: (data: { title: string; category: string; image_urls: string[] }) => 
+    api.post('/products/generate-description', data),
+  generateDescriptionWithFiles: (formData: FormData) => 
+    api.post('/products/generate-description-with-files', formData),
+}
+
+// AI Services API
+export const aiAPI = {
+  getStatus: () => api.get('/ai/status'),
 }
 
 // Users API

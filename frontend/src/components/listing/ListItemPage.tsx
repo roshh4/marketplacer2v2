@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
 import { useMarketplace } from '../../state/MarketplaceContext'
-import { aiRefine } from '../../utils'
+import { productsAPI } from '../../api/services'
 import GlassCard from '../ui/GlassCard'
 import Spinner from '../ui/Spinner'
 import { Product } from '../../types'
@@ -17,12 +17,18 @@ export default function ListItemPage({ onDone }: { onDone: () => void }) {
   const [tagInput, setTagInput] = useState('')
   const [images, setImages] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
+  const [aiGenerating, setAiGenerating] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const onDrop = (files: FileList | null) => {
     if (!files) return
     const newImages = Array.from(files).slice(0, 6 - images.length)
-    setImages((s) => [...s, ...newImages])
+    console.log('📁 Files dropped:', newImages.length, newImages.map(f => f.name))
+    setImages((s) => {
+      const updated = [...s, ...newImages]
+      console.log('📁 Updated images state:', updated.length, updated.map(f => f.name))
+      return updated
+    })
   }
 
   const removeImg = (i: number) => setImages((s) => s.filter((_, idx) => idx !== i))
@@ -35,8 +41,60 @@ export default function ListItemPage({ onDone }: { onDone: () => void }) {
   }
 
   const generateDesc = async () => {
-    const refined = await aiRefine(desc || title || 'Good item for students')
-    setDesc(refined)
+    if (!title.trim()) {
+      alert('Please enter a title first to generate a description')
+      return
+    }
+
+    setAiGenerating(true)
+    try {
+      console.log('🤖 Generating AI description...')
+      console.log('Title:', title)
+      console.log('Category:', category)
+      console.log('Images:', images.length)
+
+      // Create FormData with files
+      const formData = new FormData()
+      formData.append('title', title.trim())
+      formData.append('category', category)
+      
+      // Debug: Log images array
+      console.log('🔍 Images to upload:', images.length, images)
+      
+      // Add image files
+      images.forEach((image, index) => {
+        console.log(`📎 Adding image ${index}:`, image.name, image.size, 'bytes')
+        formData.append('images', image)
+      })
+
+      // Debug: Log FormData contents
+      console.log('📋 FormData contents:')
+      for (let [key, value] of formData.entries()) {
+        console.log(`  ${key}:`, value instanceof File ? `${value.name} (${value.size} bytes)` : value)
+      }
+
+      console.log('🌐 Calling API endpoint: /api/products/generate-description-with-files')
+      const response = await productsAPI.generateDescriptionWithFiles(formData)
+
+      console.log('✨ AI Response:', response.data)
+      
+      if (response.data.success) {
+        setDesc(response.data.description)
+        alert(`✨ Description generated successfully using ${response.data.model_used}!\n\nProcessing time: ${response.data.processing_time}`)
+      } else {
+        throw new Error(response.data.error || 'Failed to generate description')
+      }
+    } catch (error: any) {
+      console.error('❌ AI generation failed:', error)
+      
+      // Fallback to a simple template
+      const fallbackDesc = `Quality ${title} in good condition, perfect for students looking for great value and reliable performance.`
+      setDesc(fallbackDesc)
+      
+      alert(`⚠️ AI generation failed, using template description instead.\n\nError: ${error.response?.data?.error || error.message}`)
+    } finally {
+      setAiGenerating(false)
+    }
   }
 
   const submit = async () => {
@@ -134,9 +192,39 @@ export default function ListItemPage({ onDone }: { onDone: () => void }) {
 
               <div className="mt-3">
                 <label className="text-sm font-semibold">Description</label>
+                <p className="text-xs text-gray-400 mt-1">AI can analyze your images and generate a compelling description</p>
                 <div className="mt-2 flex gap-2">
-                  <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={4} className="flex-1 p-2 bg-transparent border rounded-md" />
-                  <button onClick={generateDesc} className="p-3 rounded-md bg-white/6" title="AI assist">AI</button>
+                  <textarea 
+                    value={desc} 
+                    onChange={(e) => setDesc(e.target.value)} 
+                    rows={4} 
+                    className="flex-1 p-2 bg-transparent border rounded-md" 
+                    placeholder="Enter description or click AI to generate one..."
+                  />
+                  <button 
+                    onClick={generateDesc} 
+                    disabled={aiGenerating || !title.trim()}
+                    className={`p-3 rounded-md transition-all duration-200 min-w-[60px] flex items-center justify-center ${
+                      aiGenerating 
+                        ? 'bg-blue-500/20 text-blue-400 cursor-not-allowed' 
+                        : !title.trim()
+                        ? 'bg-gray-500/20 text-gray-500 cursor-not-allowed'
+                        : 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 hover:from-purple-500/30 hover:to-blue-500/30 text-white hover:scale-105'
+                    }`}
+                    title={
+                      !title.trim() 
+                        ? "Enter a title first" 
+                        : aiGenerating 
+                        ? "Generating description..." 
+                        : "Generate AI description"
+                    }
+                  >
+                    {aiGenerating ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-400 border-t-transparent"></div>
+                    ) : (
+                      '✨ AI'
+                    )}
+                  </button>
                 </div>
               </div>
 

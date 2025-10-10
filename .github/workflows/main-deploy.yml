@@ -140,20 +140,57 @@ jobs:
           --for=condition=ready pod \
           --selector=app.kubernetes.io/component=controller \
           --timeout=300s
-        
-        # Generate self-signed certificate
-        echo "Generating self-signed certificate..."
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-          -keyout tls.key -out tls.crt \
-          -subj "/C=US/ST=CA/L=SF/O=Marketplace/CN=marketplace-api"
-        
-        # Create TLS secret
-        kubectl create secret tls marketplace-tls-secret \
-          --cert=tls.crt --key=tls.key \
-          --namespace=marketplace --dry-run=client -o yaml | kubectl apply -f -
-        
-        # Deploy Kubernetes resources
+        # Install cert-manager (for Let's Encrypt)
+        echo "Installing cert-manager..."
+        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.3/cert-manager.yaml
+        kubectl -n cert-manager rollout status deploy/cert-manager --timeout=300s
+        kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=300s
+        kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=300s
+
+        # Get NGINX Ingress external IP (for nip.io host)
+        echo "Waiting for NGINX Ingress external IP..."
+        for i in {1..30}; do
+          EXTERNAL_IP=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+          if [ ! -z "$EXTERNAL_IP" ] && [ "$EXTERNAL_IP" != "null" ]; then
+            echo "NGINX Ingress external IP: $EXTERNAL_IP"
+            break
+          fi
+          echo "Attempt $i: Waiting for NGINX Ingress external IP..."
+          sleep 10
+        done
+
+        if [ -z "$EXTERNAL_IP" ] || [ "$EXTERNAL_IP" == "null" ]; then
+          echo "Failed to get NGINX Ingress external IP after 5 minutes"
+          exit 1
+        fi
+
+        # Configure nip.io hostname in ingress
+        NIP_HOST="${EXTERNAL_IP}.nip.io"
+        echo "Configuring ingress host to: $NIP_HOST"
         cd ..
+        # Update both tls.hosts and rules.host in place
+        sed -i "s/^\(\s*- hosts:\s*\n\s*-\s*\).*/\1${NIP_HOST}/" k8s/ingress.yaml
+        sed -i "s/^\(\s*- host:\s*\).*/\1${NIP_HOST}/" k8s/ingress.yaml
+
+        # Ensure target namespace exists
+        kubectl get ns marketplace >/dev/null 2>&1 || kubectl create ns marketplace
+
+        # Create/Update application secrets from GitHub Secrets
+        echo "Applying marketplace-secrets from GitHub Secrets..."
+        kubectl create secret generic marketplace-secrets \
+          -n marketplace \
+          --from-literal=db-password="${{ secrets.DB_PASSWORD }}" \
+          --from-literal=storage-connection-string="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
+          --from-literal=content-safety-key="${{ secrets.CONTENT_SAFETY_KEY }}" \
+          --from-literal=content-safety-endpoint="${{ secrets.CONTENT_SAFETY_ENDPOINT }}" \
+          --from-literal=gemini-api-key="${{ secrets.GEMINI_API_KEY }}" \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+        # Apply cert issuer and ingress
+        kubectl apply -f k8s/cert-issuer.yaml
+        kubectl apply -n marketplace -f k8s/ingress.yaml
+
+        # Deploy the rest of Kubernetes resources
         kubectl apply -f k8s/
         
         # Update the deployment with the new image tag
@@ -183,7 +220,8 @@ jobs:
           EXTERNAL_IP=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
           if [ ! -z "$EXTERNAL_IP" ] && [ "$EXTERNAL_IP" != "null" ]; then
             echo "NGINX Ingress external IP: $EXTERNAL_IP"
-            BACKEND_URL="https://${EXTERNAL_IP}"
+            NIP_HOST="${EXTERNAL_IP}.nip.io"
+            BACKEND_URL="https://${NIP_HOST}"
             echo "backend_url=${BACKEND_URL}" >> $GITHUB_OUTPUT
             echo "Backend URL: ${BACKEND_URL}"
             break
