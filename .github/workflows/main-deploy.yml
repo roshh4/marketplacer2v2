@@ -140,95 +140,28 @@ jobs:
           --for=condition=ready pod \
           --selector=app.kubernetes.io/component=controller \
           --timeout=300s
-        # Install cert-manager (for Let's Encrypt)
-        echo "Installing cert-manager..."
-        kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.15.3/cert-manager.yaml
-        kubectl -n cert-manager rollout status deploy/cert-manager --timeout=300s
-        kubectl -n cert-manager rollout status deploy/cert-manager-webhook --timeout=300s
-        kubectl -n cert-manager rollout status deploy/cert-manager-cainjector --timeout=300s
-
-        # Get NGINX Ingress external IP (for nip.io host)
-        echo "Waiting for NGINX Ingress external IP..."
-        for i in {1..30}; do
-          EXTERNAL_IP=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-          if [ ! -z "$EXTERNAL_IP" ] && [ "$EXTERNAL_IP" != "null" ]; then
-            echo "NGINX Ingress external IP: $EXTERNAL_IP"
-            break
-          fi
-          echo "Attempt $i: Waiting for NGINX Ingress external IP..."
-          sleep 10
-        done
-
-        if [ -z "$EXTERNAL_IP" ] || [ "$EXTERNAL_IP" == "null" ]; then
-          echo "Failed to get NGINX Ingress external IP after 5 minutes"
-          exit 1
-        fi
-
-        # Configure nip.io hostname in ingress
-        NIP_HOST="${EXTERNAL_IP}.nip.io"
-        echo "Configuring ingress host to: $NIP_HOST"
-        cd ..
-        # Update both tls.hosts and rules.host in place
-        sed -i "s/^\(\s*- hosts:\s*\n\s*-\s*\).*/\1${NIP_HOST}/" k8s/ingress.yaml
-        sed -i "s/^\(\s*- host:\s*\).*/\1${NIP_HOST}/" k8s/ingress.yaml
-
-        # Ensure target namespace exists
-        kubectl get ns marketplace >/dev/null 2>&1 || kubectl create ns marketplace
-
-        # Create/Update application secrets from GitHub Secrets
-        echo "Applying marketplace-secrets from GitHub Secrets..."
-        kubectl create secret generic marketplace-secrets \
-          -n marketplace \
-          --from-literal=db-password="${{ secrets.DB_PASSWORD }}" \
-          --from-literal=storage-connection-string="${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" \
-          --from-literal=content-safety-key="${{ secrets.CONTENT_SAFETY_KEY }}" \
-          --from-literal=content-safety-endpoint="${{ secrets.CONTENT_SAFETY_ENDPOINT }}" \
-          --from-literal=gemini-api-key="${{ secrets.GEMINI_API_KEY }}" \
-          --dry-run=client -o yaml | kubectl apply -f -
-
-        # Apply cert issuer and ingress (cert-manager will create Certificate + Secret)
-        # Replace email placeholder with GitHub secret
-        sed -i "s/CERT_MANAGER_EMAIL_PLACEHOLDER/${{ secrets.CERT_MANAGER_EMAIL }}/" k8s/cert-issuer.yaml
-        kubectl apply -f k8s/cert-issuer.yaml
-        kubectl apply -n marketplace -f k8s/ingress.yaml
         
-        # Wait for certificate to be ready (up to 5 minutes)
-        echo "Waiting for Let's Encrypt certificate to be issued..."
-        for i in {1..30}; do
-          if kubectl get certificate marketplace-tls-cert -n marketplace -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' | grep -q "True"; then
-            echo "✅ Certificate is ready!"
-            break
-          fi
-          echo "Attempt $i: Certificate not ready yet..."
-          sleep 10
-        done
-
-        # Deploy the rest of Kubernetes resources
+        # Generate self-signed certificate
+        echo "Generating self-signed certificate..."
+        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+          -keyout tls.key -out tls.crt \
+          -subj "/C=US/ST=CA/L=SF/O=Marketplace/CN=marketplace-api"
+        
+        # Create TLS secret
+        kubectl create secret tls marketplace-tls-secret \
+          --cert=tls.crt --key=tls.key \
+          --namespace=marketplace --dry-run=client -o yaml | kubectl apply -f -
+        
+        # Deploy Kubernetes resources
+        cd ..
         kubectl apply -f k8s/
         
-        # Scale down to 1 to avoid CPU starvation on single-node cluster
-        kubectl scale deployment/marketplace-backend -n marketplace --replicas=1 || true
-
         # Update the deployment with the new image tag
         kubectl set image deployment/marketplace-backend marketplace-backend=roshh4/marketplace-backend-alpine-amd64:${{ steps.version.outputs.version }} -n marketplace
         
-        # Wait for rollout to complete (longer timeout) and dump diagnostics if it fails
-        set +e
-        kubectl rollout status deployment/marketplace-backend -n marketplace --timeout=600s
-        STATUS=$?
-        set -e
-        if [ $STATUS -ne 0 ]; then
-          echo "Deployment rollout failed; collecting diagnostics..."
-          kubectl get pods -n marketplace -o wide
-          kubectl describe deployment marketplace-backend -n marketplace || true
-          kubectl describe pods -n marketplace | sed -n '1,200p' || true
-          kubectl logs -n marketplace deploy/marketplace-backend --tail=200 || true
-          exit 1
-        fi
+        # Wait for rollout to complete
+        kubectl rollout status deployment/marketplace-backend -n marketplace --timeout=300s
         
-        # Scale back up to 2 replicas once stable
-        kubectl scale deployment/marketplace-backend -n marketplace --replicas=2 || true
-
         # Verify deployment
         kubectl get pods -n marketplace
         kubectl get services -n marketplace
@@ -250,8 +183,7 @@ jobs:
           EXTERNAL_IP=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
           if [ ! -z "$EXTERNAL_IP" ] && [ "$EXTERNAL_IP" != "null" ]; then
             echo "NGINX Ingress external IP: $EXTERNAL_IP"
-            NIP_HOST="${EXTERNAL_IP}.nip.io"
-            BACKEND_URL="https://${NIP_HOST}"
+            BACKEND_URL="https://${EXTERNAL_IP}"
             echo "backend_url=${BACKEND_URL}" >> $GITHUB_OUTPUT
             echo "Backend URL: ${BACKEND_URL}"
             break

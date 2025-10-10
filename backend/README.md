@@ -69,3 +69,5 @@ Connected to Azure PostgreSQL Flexible Server:
 - Host: `myreminderdb.postgres.database.azure.com`
 - Database: `marketplace`
 - SSL: Required
+
+
