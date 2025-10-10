@@ -105,14 +105,27 @@ func CreateProduct(c *gin.Context) {
 	files := form.File["images"]
 
 	var imageURLs []string
+	var approvedImages []string
+	
 	for _, file := range files {
-		url, err := uploadImageToAzure(file)
+		// Check content safety before uploading
+		url, err := uploadImageToAzureWithSafety(file)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to upload image: %v", err)})
+			log.Printf("Image rejected: %s - %v", file.Filename, err)
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error": fmt.Sprintf("Image '%s' was rejected", file.Filename),
+				"reason": "Content does not meet our community guidelines",
+				"message": "Please upload appropriate content only. Images are automatically checked for safety.",
+				"details": err.Error(),
+			})
 			return
 		}
 		imageURLs = append(imageURLs, url)
+		approvedImages = append(approvedImages, file.Filename)
 	}
+	
+	log.Printf("✅ All images approved and uploaded: %v", approvedImages)
 
 	imagesJSON, _ := json.Marshal(imageURLs)
 
@@ -149,6 +162,59 @@ func CreateProduct(c *gin.Context) {
 	c.JSON(http.StatusCreated, responseDTO)
 }
 
+// uploadImageToAzureWithSafety checks content safety before uploading to blob storage
+func uploadImageToAzureWithSafety(file *multipart.FileHeader) (string, error) {
+	if config.BlobClient == nil {
+		return "", fmt.Errorf("Azure Blob Storage client is not initialized")
+	}
+
+	// Open the file
+	src, err := file.Open()
+	if err != nil {
+		return "", err
+	}
+	defer src.Close()
+
+	// Read the file into a buffer
+	buffer, err := io.ReadAll(src)
+	if err != nil {
+		return "", err
+	}
+
+	// === CONTENT SAFETY CHECK ===
+	log.Printf("Checking content safety for image: %s", file.Filename)
+	isSafe, err := config.CheckImageSafety(buffer)
+	if err != nil {
+		log.Printf("Content safety check failed: %v", err)
+		return "", fmt.Errorf("failed to verify image safety: %v", err)
+	}
+
+	if !isSafe {
+		log.Printf("Image rejected due to inappropriate content: %s", file.Filename)
+		return "", fmt.Errorf("image contains inappropriate content and cannot be uploaded")
+	}
+
+	log.Printf("Image approved by content safety: %s", file.Filename)
+
+	// Generate a unique file name
+	ext := filepath.Ext(file.Filename)
+	fileName := fmt.Sprintf("product-images/%s%s", uuid.New().String(), ext)
+
+	// Upload to Azure Blob Storage (only if content is safe)
+	containerName := "images" // As defined in Terraform
+	_, err = config.BlobClient.UploadBuffer(context.Background(), containerName, fileName, buffer, &azblob.UploadBufferOptions{})
+	if err != nil {
+		log.Printf("Failed to upload to Azure: %v", err)
+		return "", err
+	}
+
+	// Construct the public URL
+	url := fmt.Sprintf("%s/%s/%s", config.GetBlobContainerURL(), containerName, fileName)
+	log.Printf("Image uploaded successfully: %s -> %s", file.Filename, url)
+	return url, nil
+}
+
+// Keep the original function for backward compatibility
 func uploadImageToAzure(file *multipart.FileHeader) (string, error) {
 	if config.BlobClient == nil {
 		return "", fmt.Errorf("Azure Blob Storage client is not initialized")

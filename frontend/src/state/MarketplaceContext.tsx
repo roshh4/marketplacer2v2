@@ -140,10 +140,29 @@ export const MarketplaceProvider = ({ children }: { children: ReactNode }) => {
       const response = await productsAPI.create(formData)
       const newProduct = response.data
       setProducts((s) => [newProduct, ...s])
+      
+      // Show success message for approved content
+      alert(`✅ Product Created Successfully!\n\n🛡️ All images passed content safety checks and have been uploaded securely.`)
+      
       return newProduct
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create product:', error)
-      alert('❌ Sorry, we got some error creating your product. Please try again.')
+      
+      // Handle content safety rejection specifically
+      if (error.response?.status === 400 && error.response?.data) {
+        const errorData = error.response.data
+        
+        if (errorData.reason === "Content does not meet our community guidelines") {
+          alert(`🛡️ Content Safety Check Failed\n\n${errorData.error}\n\n${errorData.message}`)
+        } else if (errorData.message === "Please upload appropriate content only") {
+          alert(`🚫 Image Rejected\n\n${errorData.error}\n\nPlease ensure your images are appropriate for our marketplace.`)
+        } else {
+          alert(`❌ Upload Failed\n\n${errorData.error || 'Unknown error occurred'}`)
+        }
+      } else {
+        alert('❌ Sorry, we got some error creating your product. Please try again.')
+      }
+      
       throw error
     }
   }

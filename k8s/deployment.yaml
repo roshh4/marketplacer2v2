@@ -47,6 +47,16 @@ spec:
             secretKeyRef:
               name: marketplace-secrets
               key: storage-connection-string
+        - name: CONTENT_SAFETY_KEY
+          valueFrom:
+            secretKeyRef:
+              name: marketplace-secrets
+              key: content-safety-key
+        - name: CONTENT_SAFETY_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: marketplace-secrets
+              key: content-safety-endpoint
         resources:
           requests:
             memory: "256Mi"
