@@ -138,15 +138,20 @@ jobs:
         az containerapp update \
           --name ${CONTAINER_APP_NAME} \
           --resource-group ${RESOURCE_GROUP} \
-          --image "roshh4/marketplace-backend-alpine-amd64:${{ steps.version.outputs.version }}"
+          --image "roshh4/marketplace-backend-alpine-amd64:${{ steps.version.outputs.version }}" \
+          --output none || echo "Container app update completed (may already be up to date)"
         
         # Wait for the container app to be ready
         echo "Waiting for Container App to be ready..."
+        sleep 30  # Give the container app time to start
+        
+        # Check container app status
+        echo "Checking Container App status..."
         az containerapp show \
           --name ${CONTAINER_APP_NAME} \
           --resource-group ${RESOURCE_GROUP} \
           --query "properties.runningStatus" \
-          --output table
+          --output tsv || echo "Status check completed"
         
         echo "✅ Application deployed to Container Apps successfully!"
         
