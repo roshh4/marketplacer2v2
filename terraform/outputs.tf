@@ -1,17 +1,16 @@
-output "aks_cluster_name" {
-  description = "Name of the AKS cluster"
-  value       = azurerm_kubernetes_cluster.marketplace.name
+output "container_app_name" {
+  description = "Name of the Container App"
+  value       = azurerm_container_app.marketplace_backend.name
 }
 
-output "aks_cluster_fqdn" {
-  description = "FQDN of the AKS cluster"
-  value       = azurerm_kubernetes_cluster.marketplace.fqdn
+output "container_app_url" {
+  description = "URL of the Container App"
+  value       = "https://${azurerm_container_app.marketplace_backend.latest_revision_fqdn}"
 }
 
-output "aks_kube_config" {
-  description = "Kubeconfig for the AKS cluster"
-  value       = azurerm_kubernetes_cluster.marketplace.kube_config_raw
-  sensitive   = true
+output "container_app_environment_name" {
+  description = "Name of the Container App Environment"
+  value       = azurerm_container_app_environment.marketplace.name
 }
 
 # Static Web App outputs removed - created manually

@@ -63,10 +63,9 @@ jobs:
             "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
           }
           
-    - name: Install kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'v1.30.0'
+    - name: Install Azure CLI
+      run: |
+        curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
           
     - name: Verify clean environment
       run: |
@@ -100,8 +99,14 @@ jobs:
 
         terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_storage_container.images "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/images" || true
         
-        # Import existing AKS cluster
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_kubernetes_cluster.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.ContainerService/managedClusters/aks-marketplace-dev" || true
+        # Import existing Container App Environment
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_container_app_environment.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/managedEnvironments/cae-marketplace-dev" || true
+        
+        # Import existing Container App
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_container_app.marketplace_backend "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/containerApps/ca-marketplace-backend-dev" || true
+        
+        # Import existing Log Analytics Workspace
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_log_analytics_workspace.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.OperationalInsights/workspaces/law-marketplace-dev" || true
         
     - name: Terraform Plan
       run: |
@@ -119,83 +124,40 @@ jobs:
           -var="container_image_tag=${{ steps.version.outputs.version }}" \
           -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}"
           
-    - name: Deploy Kubernetes resources
+    - name: Deploy Container App
       run: |
         cd terraform
-        # Get AKS credentials
+        # Get resource group and container app name
         RESOURCE_GROUP=$(terraform output -raw resource_group_name)
-        CLUSTER_NAME=$(terraform output -raw aks_cluster_name)
+        CONTAINER_APP_NAME=$(terraform output -raw container_app_name)
         echo "Resource Group: ${RESOURCE_GROUP}"
-        echo "Cluster Name: ${CLUSTER_NAME}"
+        echo "Container App Name: ${CONTAINER_APP_NAME}"
         
-        # Get AKS credentials
-        az aks get-credentials --resource-group ${RESOURCE_GROUP} --name ${CLUSTER_NAME} --overwrite-existing
+        # Update the container app with the new image tag
+        echo "Updating Container App with new image tag: ${{ steps.version.outputs.version }}"
+        az containerapp update \
+          --name ${CONTAINER_APP_NAME} \
+          --resource-group ${RESOURCE_GROUP} \
+          --image "roshh4/marketplace-backend-alpine-amd64:${{ steps.version.outputs.version }}"
         
-        # Install NGINX Ingress Controller
-        echo "Installing NGINX Ingress Controller..."
-        kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/cloud/deploy.yaml
+        # Wait for the container app to be ready
+        echo "Waiting for Container App to be ready..."
+        az containerapp show \
+          --name ${CONTAINER_APP_NAME} \
+          --resource-group ${RESOURCE_GROUP} \
+          --query "properties.runningStatus" \
+          --output table
         
-        # Wait for NGINX Ingress to be ready
-        kubectl wait --namespace ingress-nginx \
-          --for=condition=ready pod \
-          --selector=app.kubernetes.io/component=controller \
-          --timeout=300s
+        echo "✅ Application deployed to Container Apps successfully!"
         
-        # Generate self-signed certificate
-        echo "Generating self-signed certificate..."
-        openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-          -keyout tls.key -out tls.crt \
-          -subj "/C=US/ST=CA/L=SF/O=Marketplace/CN=marketplace-api"
-        
-        # Create TLS secret
-        kubectl create secret tls marketplace-tls-secret \
-          --cert=tls.crt --key=tls.key \
-          --namespace=marketplace --dry-run=client -o yaml | kubectl apply -f -
-        
-        # Deploy Kubernetes resources
-        cd ..
-        kubectl apply -f k8s/
-        
-        # Update the deployment with the new image tag
-        kubectl set image deployment/marketplace-backend marketplace-backend=roshh4/marketplace-backend-alpine-amd64:${{ steps.version.outputs.version }} -n marketplace
-        
-        # Wait for rollout to complete
-        kubectl rollout status deployment/marketplace-backend -n marketplace --timeout=300s
-        
-        # Verify deployment
-        kubectl get pods -n marketplace
-        kubectl get services -n marketplace
-        
-        echo "✅ Application deployed to AKS successfully!"
-        
-    - name: Get Backend URL from LoadBalancer
+    - name: Get Backend URL from Container App
       id: terraform-output
       run: |
         cd terraform
-        # Get AKS credentials first
-        RESOURCE_GROUP=$(terraform output -raw resource_group_name)
-        CLUSTER_NAME=$(terraform output -raw aks_cluster_name)
-        az aks get-credentials --resource-group ${RESOURCE_GROUP} --name ${CLUSTER_NAME} --overwrite-existing
-        
-        # Wait for NGINX Ingress LoadBalancer to get external IP (up to 5 minutes)
-        echo "Waiting for NGINX Ingress external IP..."
-        for i in {1..30}; do
-          EXTERNAL_IP=$(kubectl get service ingress-nginx-controller -n ingress-nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-          if [ ! -z "$EXTERNAL_IP" ] && [ "$EXTERNAL_IP" != "null" ]; then
-            echo "NGINX Ingress external IP: $EXTERNAL_IP"
-            BACKEND_URL="https://${EXTERNAL_IP}"
-            echo "backend_url=${BACKEND_URL}" >> $GITHUB_OUTPUT
-            echo "Backend URL: ${BACKEND_URL}"
-            break
-          fi
-          echo "Attempt $i: Waiting for NGINX Ingress external IP..."
-          sleep 10
-        done
-        
-        if [ -z "$EXTERNAL_IP" ] || [ "$EXTERNAL_IP" == "null" ]; then
-          echo "Failed to get NGINX Ingress external IP after 5 minutes"
-          exit 1
-        fi
+        # Get Container App URL from Terraform output
+        BACKEND_URL=$(terraform output -raw container_app_url)
+        echo "backend_url=${BACKEND_URL}" >> $GITHUB_OUTPUT
+        echo "Backend URL: ${BACKEND_URL}"
         
     - name: Verify Backend Health
       run: |

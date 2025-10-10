@@ -1,6 +1,6 @@
 # Campus Marketplace - Full Stack Application
 
-A modern campus marketplace application built with React, Go, and deployed on Azure Kubernetes Service (AKS) with automated CI/CD pipeline.
+A modern campus marketplace application built with React, Go, and deployed on Azure Container Apps with automated CI/CD pipeline.
 
 ## 🏗️ Architecture
 
@@ -8,7 +8,7 @@ A modern campus marketplace application built with React, Go, and deployed on Az
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Backend API   │    │   Database      │
 │   (React/Vite)  │◄──►│   (Go/Gin)      │◄──►│   (PostgreSQL)  │
-│   Static Web App│    │   AKS Pod       │    │   Azure Flex    │
+│   Static Web App│    │   Container App │    │   Azure Flex    │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
          │                       │                       │
          │                       │                       │
@@ -50,7 +50,7 @@ A modern campus marketplace application built with React, Go, and deployed on Az
 - **Azure Content Safety** for content moderation
 
 ### Infrastructure
-- **Azure Kubernetes Service (AKS)**
+- **Azure Container Apps**
 - **Azure PostgreSQL Flexible Server**
 - **Azure Blob Storage**
 - **Azure Static Web Apps**
@@ -61,7 +61,7 @@ A modern campus marketplace application built with React, Go, and deployed on Az
 ### DevOps
 - **GitHub Actions** for CI/CD
 - **Docker** for containerization
-- **Kubernetes** for orchestration
+- **Container Apps** for serverless container orchestration
 - **Let's Encrypt** for SSL certificates
 
 ## 📁 Project Structure
@@ -84,18 +84,10 @@ A modern campus marketplace application built with React, Go, and deployed on Az
 │   ├── routes/              # API route definitions
 │   ├── main.go              # Application entry point
 │   └── go.mod
-├── k8s/                      # Kubernetes manifests
-│   ├── deployment.yaml      # Backend deployment
-│   ├── service.yaml         # Backend service
-│   ├── ingress.yaml         # NGINX ingress with TLS
-│   ├── secret.yaml          # Application secrets
-│   ├── cert-issuer.yaml     # Let's Encrypt issuer
-│   ├── hpa.yaml             # Horizontal Pod Autoscaler
-│   └── monitoring.yaml      # Monitoring configuration
-├── terraform/                # Infrastructure as code
-│   ├── main.tf              # Azure resources
-│   ├── variables.tf         # Input variables
-│   └── outputs.tf           # Output values
+├── terraform/                # Infrastructure as Code
+│   ├── main.tf              # Main Terraform configuration
+│   ├── variables.tf         # Terraform variables
+│   └── outputs.tf           # Terraform outputs
 ├── .github/workflows/        # CI/CD pipeline
 │   └── main-deploy.yml      # Main deployment workflow
 └── README.md                # This file
@@ -114,7 +106,6 @@ A modern campus marketplace application built with React, Go, and deployed on Az
 - **Node.js 18+** and npm
 - **Go 1.23+**
 - **Docker** and Docker Compose
-- **kubectl** for Kubernetes management
 - **Azure CLI** for Azure resource management
 - **Terraform** for infrastructure deployment
 
@@ -180,37 +171,37 @@ Imports and updates existing resources for ongoing deployments
 
 #### **Azure Infrastructure**
 - **Resource Group**: `rg-marketplace-dev`
-- **AKS Cluster**: `aks-marketplace-dev` 
+- **Container App Environment**: `cae-marketplace-dev`
+- **Container App**: `ca-marketplace-backend-dev`
+- **Log Analytics Workspace**: `law-marketplace-dev`
 - **PostgreSQL**: `psql-marketplace-dev` with database
 - **Storage Account**: For product images
 
-#### **Kubernetes Resources**
-- **Namespace**: `marketplace`
-- **Secrets**: Application secrets and credentials
-- **Deployment**: Backend application pods
-- **Service**: Internal service for backend
-- **Ingress**: NGINX ingress with TLS termination
-- **HPA**: Horizontal Pod Autoscaler for auto-scaling
+#### **Container Apps Features**
+- **Auto-scaling**: Min 1, Max 3 replicas based on traffic
+- **Ingress**: Built-in HTTPS endpoint with automatic SSL
+- **Secrets Management**: Secure environment variables
+- **Health Monitoring**: Built-in health checks and logging
+- **Zero-downtime Deployments**: Rolling updates with traffic splitting
 
 #### **Security & Networking**
-- **cert-manager**: For Let's Encrypt certificates
-- **NGINX Ingress**: For external access and load balancing
-- **TLS Certificates**: Automatic SSL certificate issuance
+- **HTTPS by Default**: Automatic SSL certificate management
+- **Private Networking**: Secure communication between services
+- **Managed Identity**: Secure access to Azure resources
 
 ### **Deployment Timeline:**
 
-#### **First Run** (~20-25 minutes total)
+#### **First Run** (~15-20 minutes total)
 1. **Terraform Init** → Downloads providers
-2. **Terraform Apply** → Creates all Azure resources (~10-15 minutes)
-3. **AKS Setup** → Installs ingress, cert-manager
-4. **K8s Deploy** → Deploys your app
-5. **Certificate** → Issues Let's Encrypt cert
-6. **Frontend Deploy** → Builds and deploys to Static Web Apps
+2. **Terraform Apply** → Creates all Azure resources (~8-12 minutes)
+3. **Container App Deploy** → Deploys your app with built-in ingress
+4. **Frontend Deploy** → Builds and deploys to Static Web Apps
 
-#### **Subsequent Runs** (~5-10 minutes)
+#### **Subsequent Runs** (~3-8 minutes)
 - Only updates changed resources
 - Faster deployment with existing infrastructure
 - Rolling updates for zero-downtime deployments
+- Container Apps handle scaling and health checks automatically
 
 ### **Pipeline Features:**
 - ✅ **Idempotent**: Safe to run multiple times
@@ -285,7 +276,7 @@ The frontend will be available at `http://localhost:5173`
 
 ### Data Protection
 - Environment variables for sensitive configuration
-- Kubernetes secrets for credential management
+- Container Apps secrets for credential management
 - Encrypted database connections
 
 ## 📊 Monitoring & Observability
@@ -296,13 +287,13 @@ The frontend will be available at `http://localhost:5173`
 - Error handling and reporting
 
 ### Infrastructure Monitoring
-- Kubernetes resource monitoring
+- Container Apps resource monitoring
 - Horizontal Pod Autoscaler (HPA) for automatic scaling
 - NGINX ingress metrics
 
 ### Performance Optimization
 - Docker multi-stage builds for smaller images
-- Resource limits and requests in Kubernetes
+- Resource limits and requests in Container Apps
 - CDN distribution for static assets
 
 ## 🔄 CI/CD Pipeline
@@ -313,7 +304,7 @@ The GitHub Actions workflow (`.github/workflows/main-deploy.yml`) handles:
 1. **Build**: Create Docker image with version tag
 2. **Push**: Upload to Docker Hub registry
 3. **Infrastructure**: Deploy Azure resources with Terraform
-4. **Kubernetes**: Deploy backend to AKS cluster
+4. **Container Apps**: Deploy backend to Container Apps
 5. **SSL**: Issue Let's Encrypt certificate
 6. **Health Check**: Verify deployment success
 
@@ -364,25 +355,29 @@ VITE_API_URL=https://<your-ip>.nip.io
 VITE_NODE_ENV=production
 ```
 
-### Kubernetes Configuration
+### Container Apps Configuration
 
-#### Resource Limits
-```yaml
-resources:
-  requests:
-    memory: "256Mi"
-    cpu: "250m"
-  limits:
-    memory: "512Mi"
-    cpu: "500m"
+#### Resource Configuration
+```hcl
+template {
+  min_replicas = 1
+  max_replicas = 3
+
+  container {
+    name   = "marketplace-backend"
+    image  = "roshh4/marketplace-backend-alpine-amd64:latest"
+    cpu    = 0.5
+    memory = "1Gi"
+  }
+}
 ```
 
 #### Auto-scaling
-```yaml
-minReplicas: 1
-maxReplicas: 10
-targetCPUUtilizationPercentage: 70
-```
+Container Apps automatically handle scaling based on:
+- HTTP requests per second
+- CPU utilization
+- Memory usage
+- Custom metrics
 
 ## 🚨 Troubleshooting
 
@@ -390,28 +385,28 @@ targetCPUUtilizationPercentage: 70
 
 #### Certificate Issues
 ```bash
-# Check certificate status
-kubectl get certificate -n marketplace
+# Check Container App status
+az containerapp show --name ca-marketplace-backend-dev --resource-group rg-marketplace-dev
 
-# Check cert-manager logs
-kubectl logs -n cert-manager deployment/cert-manager
+# Check Container App logs
+az containerapp logs show --name ca-marketplace-backend-dev --resource-group rg-marketplace-dev
 ```
 
 #### CORS Issues
 - Verify frontend domain in backend CORS configuration
-- Check NGINX ingress CORS annotations
+- Check Container App ingress configuration
 - Ensure HTTPS is properly configured
 
 #### Resource Issues
 ```bash
-# Check pod status
-kubectl get pods -n marketplace
+# Check Container App status
+az containerapp show --name ca-marketplace-backend-dev --resource-group rg-marketplace-dev --query "properties.runningStatus"
 
 # Check resource usage
-kubectl top pods -n marketplace
+az monitor metrics list --resource /subscriptions/{subscription-id}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/containerApps/ca-marketplace-backend-dev --metric "CpuUsage,MemoryUsage"
 
-# Check events
-kubectl get events -n marketplace
+# Check Container App events
+az containerapp logs show --name ca-marketplace-backend-dev --resource-group rg-marketplace-dev --follow
 ```
 
 #### Database Connection Issues
@@ -422,34 +417,34 @@ kubectl get events -n marketplace
 ### Debug Commands
 
 ```bash
-# Check ingress status
-kubectl describe ingress marketplace-backend-ingress -n marketplace
+# Check Container App ingress status
+az containerapp show --name ca-marketplace-backend-dev --resource-group rg-marketplace-dev --query "properties.configuration.ingress"
 
-# Check service endpoints
-kubectl get endpoints -n marketplace
+# Check Container App URL
+az containerapp show --name ca-marketplace-backend-dev --resource-group rg-marketplace-dev --query "properties.latestRevisionFqdn"
 
 # View application logs
-kubectl logs -n marketplace deployment/marketplace-backend
+az containerapp logs show --name ca-marketplace-backend-dev --resource-group rg-marketplace-dev --follow
 
-# Check secret configuration
-kubectl get secret marketplace-secrets -n marketplace -o yaml
+# Check Container App secrets
+az containerapp secret list --name ca-marketplace-backend-dev --resource-group rg-marketplace-dev
 ```
 
 ## 📈 Scaling & Performance
 
 ### Horizontal Scaling
-- **HPA**: Automatically scales pods based on CPU usage
-- **Load Balancing**: NGINX ingress distributes traffic
-- **Resource Optimization**: Efficient resource requests and limits
+- **Auto-scaling**: Container Apps automatically scales based on HTTP requests and CPU usage
+- **Load Balancing**: Built-in load balancing with automatic traffic distribution
+- **Resource Optimization**: Efficient resource allocation with automatic optimization
 
 ### Vertical Scaling
-- **Node Pool**: AKS cluster can be scaled up/down
-- **Resource Limits**: Adjustable memory and CPU limits
+- **Container Resources**: Adjustable memory and CPU limits per container
+- **Environment Scaling**: Container App Environment scales automatically
 - **Storage**: Azure Blob Storage scales automatically
 
 ### Performance Optimization
 - **CDN**: Azure Static Web Apps provides global CDN
-- **Caching**: NGINX ingress caching for static content
+- **Caching**: Container Apps built-in caching for static content
 - **Database**: PostgreSQL connection pooling
 - **Images**: Optimized image uploads to Azure Blob Storage
 
