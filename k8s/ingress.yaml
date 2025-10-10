@@ -9,9 +9,7 @@ metadata:
     nginx.ingress.kubernetes.io/backend-protocol: "HTTP"
 spec:
   tls:
-  - hosts:
-    - "*"
-    secretName: marketplace-tls-secret
+  - secretName: marketplace-tls-secret
   rules:
   - http:
       paths:
