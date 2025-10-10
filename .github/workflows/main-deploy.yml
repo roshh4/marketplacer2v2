@@ -187,8 +187,21 @@ jobs:
           --dry-run=client -o yaml | kubectl apply -f -
 
         # Apply cert issuer and ingress (cert-manager will create Certificate + Secret)
+        # Replace email placeholder with GitHub secret
+        sed -i "s/CERT_MANAGER_EMAIL_PLACEHOLDER/${{ secrets.CERT_MANAGER_EMAIL }}/" k8s/cert-issuer.yaml
         kubectl apply -f k8s/cert-issuer.yaml
         kubectl apply -n marketplace -f k8s/ingress.yaml
+        
+        # Wait for certificate to be ready (up to 5 minutes)
+        echo "Waiting for Let's Encrypt certificate to be issued..."
+        for i in {1..30}; do
+          if kubectl get certificate marketplace-tls-cert -n marketplace -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}' | grep -q "True"; then
+            echo "✅ Certificate is ready!"
+            break
+          fi
+          echo "Attempt $i: Certificate not ready yet..."
+          sleep 10
+        done
 
         # Deploy the rest of Kubernetes resources
         kubectl apply -f k8s/
