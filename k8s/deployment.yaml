@@ -7,6 +7,11 @@ metadata:
     app: marketplace-backend
 spec:
   replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app: marketplace-backend
@@ -64,11 +69,11 @@ spec:
               key: gemini-api-key
         resources:
           requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
             memory: "512Mi"
             cpu: "500m"
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
         livenessProbe:
           httpGet:
             path: /health

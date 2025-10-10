@@ -193,6 +193,9 @@ jobs:
         # Deploy the rest of Kubernetes resources
         kubectl apply -f k8s/
         
+        # Scale down to 1 to avoid CPU starvation on single-node cluster
+        kubectl scale deployment/marketplace-backend -n marketplace --replicas=1 || true
+
         # Update the deployment with the new image tag
         kubectl set image deployment/marketplace-backend marketplace-backend=roshh4/marketplace-backend-alpine-amd64:${{ steps.version.outputs.version }} -n marketplace
         
@@ -210,6 +213,9 @@ jobs:
           exit 1
         fi
         
+        # Scale back up to 2 replicas once stable
+        kubectl scale deployment/marketplace-backend -n marketplace --replicas=2 || true
+
         # Verify deployment
         kubectl get pods -n marketplace
         kubectl get services -n marketplace
