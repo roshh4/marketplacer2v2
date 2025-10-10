@@ -186,7 +186,7 @@ jobs:
           --from-literal=gemini-api-key="${{ secrets.GEMINI_API_KEY }}" \
           --dry-run=client -o yaml | kubectl apply -f -
 
-        # Apply cert issuer and ingress
+        # Apply cert issuer and ingress (cert-manager will create Certificate + Secret)
         kubectl apply -f k8s/cert-issuer.yaml
         kubectl apply -n marketplace -f k8s/ingress.yaml
 
@@ -196,8 +196,19 @@ jobs:
         # Update the deployment with the new image tag
         kubectl set image deployment/marketplace-backend marketplace-backend=roshh4/marketplace-backend-alpine-amd64:${{ steps.version.outputs.version }} -n marketplace
         
-        # Wait for rollout to complete
-        kubectl rollout status deployment/marketplace-backend -n marketplace --timeout=300s
+        # Wait for rollout to complete (longer timeout) and dump diagnostics if it fails
+        set +e
+        kubectl rollout status deployment/marketplace-backend -n marketplace --timeout=600s
+        STATUS=$?
+        set -e
+        if [ $STATUS -ne 0 ]; then
+          echo "Deployment rollout failed; collecting diagnostics..."
+          kubectl get pods -n marketplace -o wide
+          kubectl describe deployment marketplace-backend -n marketplace || true
+          kubectl describe pods -n marketplace | sed -n '1,200p' || true
+          kubectl logs -n marketplace deploy/marketplace-backend --tail=200 || true
+          exit 1
+        fi
         
         # Verify deployment
         kubectl get pods -n marketplace
