@@ -54,6 +54,7 @@ variable "gemini_api_key" {
 variable "content_safety_endpoint" {
   description = "Azure Content Safety API endpoint"
   type        = string
+  default     = "https://image-content-moderation.services.ai.azure.com"
 }
 
 variable "content_safety_key" {

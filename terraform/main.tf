@@ -155,9 +155,12 @@ resource "azurerm_container_app" "marketplace_backend" {
         value = var.content_safety_endpoint
       }
 
-      env {
-        name        = "CONTENT_SAFETY_KEY"
-        secret_name = "content-safety-key"
+      dynamic "env" {
+        for_each = var.content_safety_key != "" ? [1] : []
+        content {
+          name        = "CONTENT_SAFETY_KEY"
+          secret_name = "content-safety-key"
+        }
       }
     }
 
@@ -180,9 +183,12 @@ resource "azurerm_container_app" "marketplace_backend" {
     value = var.gemini_api_key
   }
 
-  secret {
-    name  = "content-safety-key"
-    value = var.content_safety_key
+  dynamic "secret" {
+    for_each = var.content_safety_key != "" ? [1] : []
+    content {
+      name  = "content-safety-key"
+      value = var.content_safety_key
+    }
   }
 
   ingress {
