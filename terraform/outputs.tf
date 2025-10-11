@@ -5,7 +5,7 @@ output "container_app_name" {
 
 output "container_app_url" {
   description = "URL of the Container App"
-  value       = "https://${azurerm_container_app.marketplace_backend.latest_revision_fqdn}"
+  value       = "https://${azurerm_container_app.marketplace_backend.ingress[0].fqdn}"
 }
 
 output "container_app_environment_name" {
