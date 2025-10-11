@@ -156,7 +156,7 @@ resource "azurerm_container_app" "marketplace_backend" {
       }
 
       dynamic "env" {
-        for_each = var.content_safety_key != "" ? [1] : []
+        for_each = var.content_safety_key != "" ? toset([1]) : toset([])
         content {
           name        = "CONTENT_SAFETY_KEY"
           secret_name = "content-safety-key"
@@ -184,7 +184,7 @@ resource "azurerm_container_app" "marketplace_backend" {
   }
 
   dynamic "secret" {
-    for_each = var.content_safety_key != "" ? [1] : []
+    for_each = var.content_safety_key != "" ? toset([1]) : toset([])
     content {
       name  = "content-safety-key"
       value = var.content_safety_key
