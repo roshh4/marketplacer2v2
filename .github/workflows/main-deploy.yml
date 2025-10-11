@@ -85,25 +85,25 @@ jobs:
         cd terraform
         
         # Try to import existing resources, ignore errors if they don't exist
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_resource_group.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev" || true
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" azurerm_resource_group.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev" || true
         
         # Import existing PostgreSQL resources
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_postgresql_flexible_server.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/psql-marketplace-dev" || true
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" azurerm_postgresql_flexible_server.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/psql-marketplace-dev" || true
         
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_postgresql_flexible_server_database.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/psql-marketplace-dev/databases/marketplace" || true
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" azurerm_postgresql_flexible_server_database.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/psql-marketplace-dev/databases/marketplace" || true
         
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_postgresql_flexible_server_firewall_rule.azure_services "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/psql-marketplace-dev/firewallRules/AllowAzureServices" || true
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" azurerm_postgresql_flexible_server_firewall_rule.azure_services "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.DBforPostgreSQL/flexibleServers/psql-marketplace-dev/firewallRules/AllowAzureServices" || true
         
         # Import existing storage resources
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_storage_account.marketplace_storage "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.Storage/storageAccounts/${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" || true
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" azurerm_storage_account.marketplace_storage "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.Storage/storageAccounts/${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" || true
 
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_storage_container.images "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/images" || true
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" azurerm_storage_container.images "https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.blob.core.windows.net/images" || true
         
         # Import existing Container App Environment
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_container_app_environment.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/managedEnvironments/cae-marketplace-dev" || true
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" azurerm_container_app_environment.marketplace "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/managedEnvironments/cae-marketplace-dev" || true
         
         # Import existing Container App
-        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" azurerm_container_app.marketplace_backend "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/containerApps/ca-marketplace-backend-dev" || true
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" azurerm_container_app.marketplace_backend "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/containerApps/ca-marketplace-backend-dev" || true
                 
     - name: Terraform Plan
       run: |
@@ -111,7 +111,8 @@ jobs:
         terraform plan \
           -var="db_admin_password=${{ secrets.DB_PASSWORD }}" \
           -var="container_image_tag=${{ steps.version.outputs.version }}" \
-          -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}"
+          -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+          -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}"
           
     - name: Terraform Apply
       run: |
@@ -119,7 +120,8 @@ jobs:
         terraform apply -auto-approve \
           -var="db_admin_password=${{ secrets.DB_PASSWORD }}" \
           -var="container_image_tag=${{ steps.version.outputs.version }}" \
-          -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}"
+          -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" \
+          -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}"
           
     - name: Deploy Container App
       run: |
