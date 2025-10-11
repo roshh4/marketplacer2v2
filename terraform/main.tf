@@ -144,6 +144,11 @@ resource "azurerm_container_app" "marketplace_backend" {
         name        = "AZURE_STORAGE_CONNECTION_STRING"
         secret_name = "storage-connection-string"
       }
+
+      env {
+        name        = "GEMINI_API_KEY"
+        secret_name = "gemini-api-key"
+      }
     }
 
     min_replicas = 0
@@ -158,6 +163,11 @@ resource "azurerm_container_app" "marketplace_backend" {
   secret {
     name  = "storage-connection-string"
     value = azurerm_storage_account.marketplace_storage.primary_connection_string
+  }
+
+  secret {
+    name  = "gemini-api-key"
+    value = var.gemini_api_key
   }
 
   ingress {

@@ -44,3 +44,9 @@ variable "container_image_tag" {
   type        = string
   default     = "latest"
 }
+
+variable "gemini_api_key" {
+  description = "Gemini API key for AI description generation"
+  type        = string
+  sensitive   = true
+}
