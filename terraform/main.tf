@@ -149,6 +149,16 @@ resource "azurerm_container_app" "marketplace_backend" {
         name        = "GEMINI_API_KEY"
         secret_name = "gemini-api-key"
       }
+
+      env {
+        name  = "CONTENT_SAFETY_ENDPOINT"
+        value = var.content_safety_endpoint
+      }
+
+      env {
+        name        = "CONTENT_SAFETY_KEY"
+        secret_name = "content-safety-key"
+      }
     }
 
     min_replicas = 0
@@ -168,6 +178,11 @@ resource "azurerm_container_app" "marketplace_backend" {
   secret {
     name  = "gemini-api-key"
     value = var.gemini_api_key
+  }
+
+  secret {
+    name  = "content-safety-key"
+    value = var.content_safety_key
   }
 
   ingress {

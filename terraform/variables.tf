@@ -50,3 +50,14 @@ variable "gemini_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "content_safety_endpoint" {
+  description = "Azure Content Safety API endpoint"
+  type        = string
+}
+
+variable "content_safety_key" {
+  description = "Azure Content Safety API key"
+  type        = string
+  sensitive   = true
+}
