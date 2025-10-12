@@ -104,6 +104,13 @@ jobs:
         
         # Import existing Container App
         terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" -var="content_safety_endpoint=https://image-content-moderation.services.ai.azure.com" -var="content_safety_key=${{ secrets.CONTENT_SAFETY_KEY }}" azurerm_container_app.marketplace_backend "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.App/containerApps/ca-marketplace-backend-dev" || true
+        
+        # Import existing Azure Functions resources
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" -var="content_safety_endpoint=https://image-content-moderation.services.ai.azure.com" -var="content_safety_key=${{ secrets.CONTENT_SAFETY_KEY }}" azurerm_storage_account.function_storage "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.Storage/storageAccounts/${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}func" || true
+        
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" -var="content_safety_endpoint=https://image-content-moderation.services.ai.azure.com" -var="content_safety_key=${{ secrets.CONTENT_SAFETY_KEY }}" azurerm_service_plan.function_plan "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.Web/serverfarms/asp-marketplace-functions-dev" || true
+        
+        terraform import -var="db_admin_password=${{ secrets.DB_PASSWORD }}" -var="container_image_tag=${{ steps.version.outputs.version }}" -var="storage_account_name=${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}" -var="gemini_api_key=${{ secrets.GEMINI_API_KEY }}" -var="content_safety_endpoint=https://image-content-moderation.services.ai.azure.com" -var="content_safety_key=${{ secrets.CONTENT_SAFETY_KEY }}" azurerm_linux_function_app.ai_description "/subscriptions/${{ secrets.AZURE_SUBSCRIPTION_ID }}/resourceGroups/rg-marketplace-dev/providers/Microsoft.Web/sites/func-marketplace-ai-dev" || true
                 
     - name: Terraform Plan
       run: |
@@ -186,9 +193,91 @@ jobs:
         echo "Final health check:"
         curl -k -v "${BACKEND_URL}/health" || echo "⚠️ Backend health check failed, but continuing deployment"
 
-  build-and-deploy-frontend:
+  deploy-azure-functions:
     runs-on: ubuntu-latest
     needs: build-and-deploy-backend
+    outputs:
+      function-url: ${{ steps.get-function-url.outputs.function_url }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: |
+          {
+            "clientId": "${{ secrets.AZURE_CLIENT_ID }}",
+            "clientSecret": "${{ secrets.AZURE_CLIENT_SECRET }}",
+            "subscriptionId": "${{ secrets.AZURE_SUBSCRIPTION_ID }}",
+            "tenantId": "${{ secrets.AZURE_TENANT_ID }}"
+          }
+          
+    - name: Setup Terraform (to get outputs)
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: 1.6.0
+        terraform_wrapper: false
+        
+    - name: Get Function App Name
+      id: get-function-name
+      run: |
+        cd terraform
+        terraform init
+        FUNCTION_APP_NAME=$(terraform output -raw function_app_name)
+        echo "function_app_name=${FUNCTION_APP_NAME}" >> $GITHUB_OUTPUT
+        echo "Function App Name: ${FUNCTION_APP_NAME}"
+        
+    - name: Install dependencies
+      run: |
+        cd azure-functions/ai-generated-description
+        pip install -r requirements.txt
+        
+    - name: Deploy Azure Functions
+      uses: Azure/functions-action@v1
+      with:
+        app-name: ${{ steps.get-function-name.outputs.function_app_name }}
+        package: 'azure-functions/ai-generated-description'
+        
+    - name: Get Function URL
+      id: get-function-url
+      run: |
+        cd terraform
+        FUNCTION_URL=$(terraform output -raw function_app_url)
+        echo "function_url=${FUNCTION_URL}" >> $GITHUB_OUTPUT
+        echo "Function URL: ${FUNCTION_URL}"
+        
+    - name: Test Azure Functions
+      run: |
+        FUNCTION_URL="${{ steps.get-function-url.outputs.function_url }}"
+        echo "Testing Azure Functions at: ${FUNCTION_URL}"
+        
+        # Wait for function to be ready
+        for i in {1..12}; do
+          if curl -k -f "${FUNCTION_URL}/api/health" >/dev/null 2>&1; then
+            echo "✅ Azure Functions are healthy and accessible!"
+            break
+          fi
+          echo "Attempt $i: Functions not ready yet..."
+          sleep 10
+        done
+        
+        # Test AI description endpoint
+        echo "Testing AI description generation:"
+        curl -k -X POST "${FUNCTION_URL}/api/generate-description" \
+          -H "Content-Type: application/json" \
+          -d '{"title": "Test Laptop", "category": "Electronics"}' \
+          || echo "⚠️ AI description test failed, but continuing deployment"
+
+  build-and-deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: [build-and-deploy-backend, deploy-azure-functions]
     
     steps:
     - name: Checkout code
@@ -206,11 +295,13 @@ jobs:
         cd frontend
         npm ci
         
-    - name: Build frontend with backend URL
+    - name: Build frontend with backend and function URLs
       run: |
         cd frontend
         echo "Building frontend with backend URL: ${{ needs.build-and-deploy-backend.outputs.backend-url }}"
+        echo "Building frontend with function URL: ${{ needs.deploy-azure-functions.outputs.function-url }}"
         echo "VITE_API_URL=${{ needs.build-and-deploy-backend.outputs.backend-url }}" > .env.production
+        echo "VITE_FUNCTION_URL=${{ needs.deploy-azure-functions.outputs.function-url }}" >> .env.production
         echo "VITE_NODE_ENV=production" >> .env.production
         cat .env.production
         npm run build

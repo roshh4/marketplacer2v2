@@ -39,3 +39,18 @@ output "postgresql_server_name" {
   description = "Name of the PostgreSQL server"
   value       = azurerm_postgresql_flexible_server.marketplace.name
 }
+
+output "function_app_name" {
+  description = "Name of the Azure Function App"
+  value       = azurerm_linux_function_app.ai_description.name
+}
+
+output "function_app_url" {
+  description = "URL of the Azure Function App"
+  value       = "https://${azurerm_linux_function_app.ai_description.default_hostname}"
+}
+
+output "function_app_hostname" {
+  description = "Hostname of the Azure Function App"
+  value       = azurerm_linux_function_app.ai_description.default_hostname
+}

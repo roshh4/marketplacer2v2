@@ -196,3 +196,62 @@ resource "azurerm_container_app" "marketplace_backend" {
     }
   }
 }
+
+# Storage Account for Azure Functions
+resource "azurerm_storage_account" "function_storage" {
+  name                     = "${substr(replace(var.storage_account_name, "-", ""), 0, 20)}func"
+  resource_group_name      = azurerm_resource_group.marketplace.name
+  location                 = azurerm_resource_group.marketplace.location
+  account_tier             = "Standard"
+  account_replication_type = "LRS"
+  account_kind             = "StorageV2"
+
+  tags = {
+    environment = var.environment
+  }
+}
+
+# App Service Plan for Azure Functions (Consumption Plan)
+resource "azurerm_service_plan" "function_plan" {
+  name                = "asp-marketplace-functions-${var.environment}"
+  resource_group_name = azurerm_resource_group.marketplace.name
+  location            = azurerm_resource_group.marketplace.location
+  os_type             = "Linux"
+  sku_name            = "Y1"
+
+  tags = {
+    environment = var.environment
+  }
+}
+
+# Azure Function App for AI Description Generation
+resource "azurerm_linux_function_app" "ai_description" {
+  name                = "func-marketplace-ai-${var.environment}"
+  resource_group_name = azurerm_resource_group.marketplace.name
+  location            = azurerm_resource_group.marketplace.location
+
+  storage_account_name       = azurerm_storage_account.function_storage.name
+  storage_account_access_key = azurerm_storage_account.function_storage.primary_access_key
+  service_plan_id            = azurerm_service_plan.function_plan.id
+
+  site_config {
+    application_stack {
+      python_version = "3.9"
+    }
+
+    cors {
+      allowed_origins = ["*"]
+    }
+  }
+
+  app_settings = {
+    "FUNCTIONS_WORKER_RUNTIME"     = "python"
+    "GEMINI_API_KEY"              = var.gemini_api_key
+    "WEBSITE_RUN_FROM_PACKAGE"    = "1"
+    "SCM_DO_BUILD_DURING_DEPLOYMENT" = "true"
+  }
+
+  tags = {
+    environment = var.environment
+  }
+}

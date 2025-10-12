@@ -117,30 +117,25 @@ Simple health check endpoint.
 
 ### Deployment to Azure
 
-1. **Create Azure Function App**:
-   ```bash
-   az functionapp create \
-     --resource-group myResourceGroup \
-     --consumption-plan-location westus \
-     --runtime python \
-     --runtime-version 3.9 \
-     --functions-version 4 \
-     --name my-ai-description-function \
-     --storage-account mystorageaccount
-   ```
+The Azure Function is deployed automatically via CI/CD pipeline when you push to the main branch.
 
-2. **Deploy the function**:
-   ```bash
-   func azure functionapp publish my-ai-description-function
-   ```
+**Automatic Deployment (Recommended)**:
+- Push code to `main` branch
+- GitHub Actions will automatically:
+  1. Deploy infrastructure via Terraform
+  2. Deploy function code to Azure
+  3. Run health checks and tests
 
-3. **Configure environment variables in Azure**:
-   ```bash
-   az functionapp config appsettings set \
-     --name my-ai-description-function \
-     --resource-group myResourceGroup \
-     --settings "GEMINI_API_KEY=your-actual-gemini-api-key"
-   ```
+**Manual Deployment (Development)**:
+```bash
+# 1. Deploy infrastructure first
+cd terraform
+terraform apply
+
+# 2. Deploy function code manually
+cd azure-functions/ai-generated-description
+func azure functionapp publish func-marketplace-ai-dev
+```
 
 ## Environment Variables
 
