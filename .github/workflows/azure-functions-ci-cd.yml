@@ -3,8 +3,7 @@ name: Azure Functions CI/CD
 on:
   push:
     branches:
-      - main
-      - develop
+      - feature/gemini-azure-function
     paths:
       - 'azure-functions/**'
       - 'terraform/modules/azure-functions/**'
