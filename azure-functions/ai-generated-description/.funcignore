@@ -1,0 +1,71 @@
+# Azure Functions ignore file
+# This file specifies which files and directories should be ignored when deploying to Azure Functions
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Git files
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Test files
+test_*
+*_test.py
+tests/
+
+# Local settings (contains secrets)
+local.settings.json
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Log files
+*.log
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+
+# Distribution files
+dist/
+build/
+*.egg-info/
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+
+# Azure specific
+.azure/

@@ -39,3 +39,29 @@ output "postgresql_server_name" {
   description = "Name of the PostgreSQL server"
   value       = azurerm_postgresql_flexible_server.marketplace.name
 }
+
+# Azure Functions Outputs
+output "function_app_name" {
+  description = "Name of the Azure Function App"
+  value       = module.azure_functions.function_app_name
+}
+
+output "function_app_url" {
+  description = "URL of the Azure Function App"
+  value       = module.azure_functions.function_app_url
+}
+
+output "function_staging_url" {
+  description = "URL of the Function App staging slot"
+  value       = module.azure_functions.staging_slot_url
+}
+
+output "function_api_endpoints" {
+  description = "Available Function API endpoints"
+  value       = module.azure_functions.api_endpoints
+}
+
+output "function_key_vault_name" {
+  description = "Name of the Functions Key Vault"
+  value       = module.azure_functions.key_vault_name
+}
