@@ -62,10 +62,3 @@ variable "content_safety_key" {
   type        = string
   sensitive   = true
 }
-
-# Azure Functions Variables
-variable "function_cors_origins" {
-  description = "List of allowed origins for Azure Functions CORS"
-  type        = list(string)
-  default     = ["*"]
-}

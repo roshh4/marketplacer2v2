@@ -4,10 +4,6 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~>3.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = "~>3.0"
-    }
   }
 }
 
@@ -199,35 +195,4 @@ resource "azurerm_container_app" "marketplace_backend" {
       latest_revision = true
     }
   }
-}
-
-# Azure Functions Module for AI Description Generation
-module "azure_functions" {
-  source = "./modules/azure-functions"
-
-  environment                      = var.environment
-  resource_group_name             = azurerm_resource_group.marketplace.name
-  function_app_name               = "func-ai-desc-${var.environment}"
-  functions_storage_account_name  = "funcst${var.environment}${random_string.storage_suffix.result}"
-  key_vault_name                  = "kv-func-${var.environment}-${random_string.kv_suffix.result}"
-  gemini_api_key                  = var.gemini_api_key
-  allowed_origins                 = var.function_cors_origins
-  enable_staging_slot             = var.environment != "prod" ? true : false
-
-  depends_on = [
-    azurerm_resource_group.marketplace
-  ]
-}
-
-# Random string for unique resource names
-resource "random_string" "storage_suffix" {
-  length  = 6
-  special = false
-  upper   = false
-}
-
-resource "random_string" "kv_suffix" {
-  length  = 6
-  special = false
-  upper   = false
 }
