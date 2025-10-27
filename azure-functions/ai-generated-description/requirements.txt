@@ -1,6 +1,6 @@
 # Azure Functions Core
 azure-functions>=1.18.0
-azure-functions-worker>=1.0.0
+# azure-functions-worker>=1.0.0  # Removed - conflicts with Azure Functions platform
 
 # HTTP Requests
 requests>=2.31.0

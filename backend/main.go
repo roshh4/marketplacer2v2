@@ -23,6 +23,7 @@ func main() {
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{
 			"http://localhost:5173",
+			"http://localhost:5174",
 			"http://localhost:3000",
 			"https://ashy-coast-049069600.2.azurestaticapps.net", // Your actual frontend URL
 		},
